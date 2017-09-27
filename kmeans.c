@@ -12,7 +12,12 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define LOG2(X) log((X)) / log(2)
 
-
+//function prototypes
+int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, int *cluster_assign);
+void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_start, double **cluster_centroid, int *cluster_assign);
+void assignData(int dim, int ndata, double *data, int k, int *cluster_start, double **cluster_centroid, int *cluster_assign);
+int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double *query, double *result_pt);
+int calculateDistance(int dim, int data_idx, double **cluster_centroid);
 
 
 
