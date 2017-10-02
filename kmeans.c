@@ -4,7 +4,7 @@
 #include <time.h>
 
 #define N 16
-#define K 2 //at least 2 
+#define K 3 //at least 2 
 #define DIM 2
 #define Q 10
 
@@ -17,9 +17,51 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
 void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_start, double **cluster_centroid, int *cluster_assign);
 void assignData(int dim, int ndata, double *data, int k, int *cluster_start, double **cluster_centroid, int *cluster_assign);
 int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double *query, double *result_pt);
-int calculateDistance(int dim, int data_idx, double *data, double **cluster_centroid);
+double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid);
 void initializeCentroids(int dim, int ndata, double *data, int k, double **cluster_centroid, int start_idx, int m);
 //end prototypes
+
+
+void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_start, double **cluster_centroid, int *cluster_assign) {
+
+
+
+
+}
+
+
+double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid) {
+	int i;
+	double distance = 0.0;
+
+	for (i = 0; i < dim; i++) {
+		distance += pow(cluster_centroid[clust_idx][i] - data[data_idx+i], 2);
+	}
+
+	distance = sqrt(distance);
+
+	return distance;
+}
+
+void assignData(int dim, int ndata, double *data, int k, int *cluster_start, double **cluster_centroid, int *cluster_assign) {
+	int i, j, cent_idx;
+	double temp_distance, distance = 10000.0;
+
+	for (i = 0; i < ndata*dim; i+=dim) { //each data point
+		for (j = 0; j < k; j++) { //each centroid 
+			temp_distance = calculateClusterDistance(dim, i, data, j, cluster_centroid);
+
+			distance = MIN(distance, temp_distance);
+
+			if (distance == temp_distance)
+				cent_idx = j;
+		}
+
+		cluster_assign[i/dim] = cent_idx;
+	}
+
+
+}
 
 void initializeCentroids(int dim, int ndata, double *data, int k, double **cluster_centroid, int start_idx, int m) {
 	int i, j, l, centroid_point;
@@ -35,7 +77,7 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 			distance = sqrt(distance);
 			//get min distance to a centroid for that point
 			point_min = MIN(point_min, distance);
-
+			printf("min distance for point %d is %f\n", j/dim, point_min);
 			 
 		}
 		//get max min distance for each data point
@@ -45,8 +87,12 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 		if (total_max == point_min) {
 			centroid_point = j;	
 		}
+
+		//reset point_min
+		point_min = 10000.0;
+
 	}
-	
+		
 	//now put the new centroid in its place
 	for (i = 0; i < dim; i++) {
 		cluster_centroid[m][i] = data[centroid_point+i];
@@ -56,8 +102,8 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 
 int main() {
 	
-	int i, j, kcheck = 2, cent_idx;
-	double r, td = 0.0, d = 0.0;
+	int i, j, kcheck = 1, rint;
+	double r;
 	double *data, **cluster_centroid, *query, *result;
 	int *cluster_assign, *cluster_size,  *cluster_start;
 
@@ -97,12 +143,12 @@ int main() {
 	}
 	printf("\n");
 
-	//initialize centroids ********FALSEFALSEFALSE rand should be index
-	for (i = 0; i < dim; i++) {
-		r = ((double)rand() / (double)(RAND_MAX)) * 100.0;
-		cluster_centroid[0][i] = r;
+	//initialize centroids
+	rint = rand() % N;
+	for (i = 0; i < DIM; i++) {
+		cluster_centroid[0][i] = data[rint+i];
 	}
-	for (i = 0; i < N*DIM; i+=DIM) {
+/*	for (i = 0; i < N*DIM; i+=DIM) {
 		td = calculateDistance(DIM, i, data, cluster_centroid); 
 		d = MAX(d, td);
 		if (td == d) {
@@ -111,9 +157,10 @@ int main() {
 	}
 	for (i = 0; i < dim; i++) {
 		
-	}
-	while (kcheck < k) {
+	}*/
+	while (kcheck < K) {
 		initializeCentroids(DIM, N, data, K, cluster_centroid, 0, kcheck);
+		kcheck++;
 	}
 
 	/*for (i = 0; i < Q * DIM; i++) {
