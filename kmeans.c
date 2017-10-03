@@ -29,7 +29,8 @@ void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_si
 	
 	for (i = 0; i < k; i++) {
 		loopstart = cluster_start[i]*dim;
-		loopend =  cluster_size[i]*dim;
+		loopend =  loopstart + cluster_size[i]*dim;
+		//printf("loop start %d loop end %d \n", loopstart, loopend);
 		//for each centroid, getting the sum of all points, each of their dimensions, in temp_centroid
 		for (j = loopstart; j < loopend; j+=dim) {
 			for (l = 0; l < dim; l++) {	
@@ -38,10 +39,13 @@ void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_si
 		} 
 
 		//now get the averages for each dimension in temp_centroid and put it in cluster_centroid
+		//printf("cluster centroid ");
 		for (j = 0; j < dim; j++) {
+			//printf("%f\t,", temp_centroid[j]); 
 			cluster_centroid[i][j] = temp_centroid[j] / k;
 			temp_centroid[j] = 0.0;
 		}
+		printf("\n");
 	}	
 
 
@@ -87,8 +91,14 @@ void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int 
 		cluster_assign[i/dim] = cent_idx;
 	}
 
+	/*printf("\n");
+	for (i = 0; i < ndata; i++) {
+		printf("\t%d,", cluster_assign[i]);
+	}
+	printf("\n");*/
+
 	for (l = 0; l < k; l++) { // for each cluster 
-		for (i = 0; i < ndata; i+=dim) { //for each data point	
+		for (i = 0; i < ndata*dim; i+=dim) { //for each data point	
 			//rearrange data set
 			if (cluster_assign[i/dim] == l) {
 				cluster_size[l]++; //keep track of each cluster size
