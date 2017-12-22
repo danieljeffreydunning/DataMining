@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include "kdtree.h"
 
 #define N 5000
 #define K 64 //even power of 2 
