@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include "lsh.h"
 
 #define N 16000
 #define W 10000
