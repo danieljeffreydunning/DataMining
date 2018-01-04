@@ -1,0 +1,5 @@
+for reading binary, we need to do (or have the following)
+
+1) array of size of each of the data figures (will need struct if different types, or we can ignore the naming labels)
+2) for fread, the size of the stride is the size of the data figures, (if they are bytes, use unsigned char and print out with %u)
+3) if we need to conver data types, use two separate arrays. use ato[datatype] for chars, and just use casting ([datatype]) var for unsigned char 

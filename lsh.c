@@ -14,12 +14,11 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
 //function prototypes
-int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, 
-	int *cluster_start, int **H, int *hash_vals);
+//int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals);
 int dotprod(int dim, double *data, double **r, int d_idx, int r_idx); //dot product
 int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int running_cnt, int *hash_assign); //compares a new hash value to existi											ng ones. returns total number of clusters we have so far
 void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim); 
-void local_search(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
+//void local_search(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
 double distance(int dim, int query_idx, double *query, int data_idx, double *data);
 
 /*******************/
