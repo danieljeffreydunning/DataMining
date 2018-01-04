@@ -12,10 +12,11 @@
  *@param cluster_assign: array of each data point's cluster assignment. Size ndata
  *@param world_size: size of MPI communication world
  *@param world_rank: individual processor rank
- *@param query: array holding the query points. Size number_of_queries(called Q) * dim
- *@param result_pt: array holding the closest point to each corresponding query point. Size Q * dim 
+ *@param query: array holding the query points. Size number_of_queries(called q) * dim
+ *@param result_pt: array holding the closest point to each corresponding query point. Size q * dim
+ *@param q: number of query point 
  */
 
 int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
 
-int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt, int world_size, int world_rank);
+int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt, int world_size, int world_rank, int q);
