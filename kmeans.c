@@ -6,6 +6,7 @@
 #include <string.h>
 #include <float.h>
 #include "kmeans.h"
+#include "util/dataFunctions.h"
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
@@ -529,14 +530,13 @@ int main(int argc, char** argv) {
     FILE *file = fopen(path, "rb");
 
     if (file == NULL) { //if no file
-        printf("File not foud, program exited with code 0\n");
+        printf("File not found, program exited with code 0\n");
         return 0;
     }
 
     //seed random number
 	srand(23);
 	
-
 	cluster_size = (int *)malloc(sizeof(int) * k);
 	cluster_start = (int *)malloc(sizeof(int) * k);
 	cluster_centroid = (double **)malloc(sizeof(double *) * k);
