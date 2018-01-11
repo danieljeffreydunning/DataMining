@@ -46,7 +46,7 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 			}
 
 		}
-        printf("%d has min cent dist %f idx at %d\n", world_rank, cent_dist, min_clust_idx);
+        //printf("%d has min cent dist %f idx at %d\n", world_rank, cent_dist, min_clust_idx);
 
 		//calculate distance to each point in the closest cluster and get the local minimum
         loopstart = cluster_start[min_clust_idx];
@@ -155,12 +155,10 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
 	calculateCentroids(dim, ndata, data, k, cluster_size, cluster_start, cluster_centroid, cluster_assign, world_size, world_rank);
 
     if (world_rank == 0) 
-        printf("Adjusting centroids...\n");
+        printf("Adjusting centroids\n...\n");
 
     //do the process until none of the data points change cluster (has a hardcoded limit of 50, can be modified or removed)
 	while ((!doneflag) && (stallflag < 50)) {
-        if (world_rank == 0) 
-            printf("...\n");
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
@@ -247,6 +245,13 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
 		cycle_cnt++;
 	}
 
+    if (world_rank == 0) { //printf global cluster sizes
+        printf("\nCluster sizes: ");
+        for (i = 0; i < k; i++) {
+            printf("%d ", temp_clust_size[i]);
+        }
+        printf("\n");
+    }
 
 	for (i = 0; i < k; i++) {
 		loopstart = cluster_start[i]*dim;
@@ -527,12 +532,12 @@ int main(int argc, char** argv) {
     path[0] = '\0';
     strcat(path, argv[1]);
     
-    FILE *file = fopen(path, "rb");
+    /*FILE *file = fopen(path, "rb");
 
     if (file == NULL) { //if no file
         printf("File not found, program exited with code 0\n");
         return 0;
-    }
+    }*/
 
     //seed random number
 	srand(23);
@@ -579,9 +584,10 @@ int main(int argc, char** argv) {
     }
 	
     //start reading binary file
-    fseek(file, world_rank * proc_chunk_size * dim * sizeof(float), SEEK_SET);
+    /*fseek(file, world_rank * proc_chunk_size * dim * sizeof(float), SEEK_SET);
 
-    fread(ft_data, sizeof(float), proc_chunk_size*dim, file);
+    fread(ft_data, sizeof(float), proc_chunk_size*dim, file);*/
+    readFloatBin(path, ft_data, proc_chunk_size * dim, world_rank);
     //convert float values into doubles because computation numbers can get quite large
     for (i = 0; i < proc_chunk_size * dim; i++) {
         proc_data[i] = (double) ft_data[i];
@@ -606,11 +612,22 @@ int main(int argc, char** argv) {
 	}
 
 	if (world_rank == 0) {
-        printf("Query: ");
-        for (i = 0; i < 5; i++) {
+        //initialize random query points unless they are coming from a file
+	    for (i = 0; i < q * dim; i+=1000) {
+            rint = rand() % 1000; //for size purposes, only have 1 out of every 1000 genes be expressed only up to an amount of 20
+	    	r = ((double) rand() / (double)(RAND_MAX)) * 20.0;
+        
+	    	query[rint] = r; 
+		    printf("%f,", r);
+    	}
+        printf("\n");
+        MPI_Bcast(&query[0], dim * q, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        /*printf("Query: ");
+        for (i = 0; i < 1000; i++) {
             printf("%f, ", query[i]);
         }
-        printf("\n");
+        printf("\n");*/
 
 		//initialize centroids
 		rint = rand() % proc_chunk_size;
@@ -623,6 +640,7 @@ int main(int argc, char** argv) {
 	}
 
 	else { // not root
+        MPI_Bcast(&query[0], dim * q, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&cluster_centroid[0][0], dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	}
 
@@ -638,41 +656,39 @@ int main(int argc, char** argv) {
 	}
 
     if (world_rank == 0) {
-    	printf("\nCentroids\n");
+    	/*printf("\nCentroids\n");
     	for (i = 0; i < k; i++) {
     		for (j = 0; j < 10; j++) {
 	    		printf("%f,", cluster_centroid[i][j]);
 	    	}
 	    	printf("\n");
-	    }
+	    }*/
     }
 
 	cycles = kmeans(dim, proc_chunk_size, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, cluster_assign, world_size, world_rank);
 	
-    printf("\nCentroid sizes ");
+    /*printf("\nCentroid sizes ");
 	for (i = 0; i < k; i++) {
 		printf("%d,", cluster_size[i]);
 	}
-	printf("\n");
+	printf("\n");*/
 
 
 if (world_rank == 0) {
 
 	printf("\ncycles %d\n", cycles);
 
-    printf("Cluster radii: ");
+    /*printf("Cluster radii: ");
     for (i = 0; i < k; i++) {
         printf("%f, ", cluster_radius[i]);
     }
-    printf("\n");
+    printf("\n");*/
 
 	//printf("\n");
 }
 	pointcnt = search_kmeans(dim, ndata, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, query, result, world_size, world_rank, q);
 
-	printf("number of points checked %d\n", pointcnt/q);
-
-    fclose(file);
+	printf("number of points checked %d\n\n", pointcnt/q);
 
     free(ft_data);
 	free(result);

@@ -3,8 +3,10 @@
 #include <string.h>
 #include "dataFunctions.h"
 
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
 int main(int argc, char** argv) {
-    int strsize1, strsize2, dim, ndata;
+    int strsize1, strsize2, dim, ndata, i;
     char *pathfrom, *pathto;
     float *data;
 
@@ -28,6 +30,11 @@ int main(int argc, char** argv) {
     //printf("%s\n", pathfrom);
     //printf("%s\n", pathto);
     txtToFloatBin(pathfrom, pathto, data, dim, ndata, 0); 
+
+    for (i = 0; i < 5; i++) {
+        printf("%f, ", data[i]);
+    }
+    printf("\n");
 
     return 0;
 }

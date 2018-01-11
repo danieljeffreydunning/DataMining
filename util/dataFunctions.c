@@ -100,7 +100,7 @@ void txtToCharBin(char *read_path, char *write_path, unsigned char *data, int fe
 
 }
 
-void readFloatBin(char *path, float *data, int chunk_size) {
+void readFloatBin(char *path, float *data, int chunk_size, int rank) {
     FILE *file = fopen(path, "rb");
 
     if (file == NULL) { //if no file
@@ -109,7 +109,7 @@ void readFloatBin(char *path, float *data, int chunk_size) {
     }
 
     //starting position
-    fseek(file, chunk_size * sizeof(float), SEEK_SET);
+    fseek(file, rank * chunk_size * sizeof(float), SEEK_SET);
 
     //read from starting position with chunk size of chunk_size
     fread(data, sizeof(float), chunk_size, file);
@@ -117,7 +117,7 @@ void readFloatBin(char *path, float *data, int chunk_size) {
     fclose(file);
 }
 
-void readCharBin(char *path, unsigned char *data, int chunk_size) {
+void readCharBin(char *path, unsigned char *data, int chunk_size, int rank) {
     FILE *file = fopen(path, "rb");
 
     if (file == NULL) { //if no file
