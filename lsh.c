@@ -159,8 +159,7 @@ int dotprod(int dim, double *data, double **r, int d_idx, int r_idx) {
 	return sum;
 }
 
-int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size,
-	int *cluster_start, int **H, int *hash_vals) {
+int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals) {
 	
 	int i, j, k, h_i, hash_x_idx = 0, hash_y_idx = 0;
 	int H_count = 0, running_cnt = 0, clust_start_idx = 0;
