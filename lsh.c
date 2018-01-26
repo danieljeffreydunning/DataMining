@@ -3,6 +3,8 @@
 #include <math.h>
 #include <time.h>
 #include "lsh.h"
+#include "util/dataFunctions.h"
+#include "util/compFunctions.h"
 
 #define N 16000
 #define W 10000
@@ -10,14 +12,11 @@
 #define DIM 8
 #define Q 1
 
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-
 //function prototypes
 //int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals);
-int dotprod(int dim, double *data, double **r, int d_idx, int r_idx); //dot product
-int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int running_cnt, int *hash_assign); //compares a new hash value to existi											ng ones. returns total number of clusters we have so far
-void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim); 
+//int dotprod(int dim, double *data, double **r, int d_idx, int r_idx); //dot product
+//int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int running_cnt, int *hash_assign); //compares a new hash value to existi											ng ones. returns total number of clusters we have so far
+//void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim); 
 //void local_search(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
 double distance(int dim, int query_idx, double *query, int data_idx, double *data);
 
@@ -148,17 +147,6 @@ int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int runn
 	return running_cnt;
 }
 
-int dotprod(int dim, double *data, double **r, int d_idx, int r_idx) {
-	int i, sum = 0;
-
-	for (i = 0; i < dim; i++) {
-		sum += data[d_idx+i] * r[r_idx][i];
-	}
-
-	//printf("Sum: %d\n", sum);
-	return sum;
-}
-
 int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals) {
 	
 	int i, j, k, h_i, hash_x_idx = 0, hash_y_idx = 0;
@@ -245,10 +233,10 @@ int main(int argc, char** argv) {
 	int *cluster_size, *cluster_start, **H, *hash_vals, *query_hash;
 	double *data, **r, *b, *query, *result;
 
-	ndata = N;
-	dim = DIM;
-	m = M;
-	w = W;
+	ndata = atoi(argv[2]);
+	dim = atoi(argv[3]);
+	m = atoi(argv[4]);
+	w = atoi(argv[5]);
 
 	data = (double *)malloc(sizeof(double) * ndata * dim);
 	b = (double *)malloc(sizeof(double) * m);
