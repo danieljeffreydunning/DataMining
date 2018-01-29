@@ -516,36 +516,13 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 
 
 
-int main(int argc, char** argv) {
-	
-
-	MPI_Init(NULL, NULL);
-
-	int kcheck = 1, rint, cycles, pointcnt, strsize, q;
-    int k, dim, ndata, data_remainder;
-    char *path;
+void runKMeans(char *path, int ndata, int dim, int k, int q) {
+	int kcheck = 1, rint, cycles, pointcnt, strsize, i, j, world_size, world_rank, proc_chunk_size, data_remainder;
+	int *cluster_assign, *cluster_size,  *cluster_start;
+    float *ft_data;
 	double r;
 	double *proc_data, **cluster_centroid, *cluster_radius, *query, *result;
-	int *cluster_assign, *cluster_size,  *cluster_start;
     
-    strsize = strlen(argv[1]);
-    k = atoi(argv[2]);
-    dim = atoi(argv[3]);
-    ndata = atoi(argv[4]);
-    q = atoi(argv[5]);
-
-    //get path from command line
-    path = (char *)malloc(sizeof(char) * strsize);
-    path[0] = '\0';
-    strcat(path, argv[1]);
-    
-    /*FILE *file = fopen(path, "rb");
-
-    if (file == NULL) { //if no file
-        printf("File not found, program exited with code 0\n");
-        return 0;
-    }*/
-
     //seed random number
 	srand(23);
 	
@@ -556,10 +533,6 @@ int main(int argc, char** argv) {
 
 	query = (double *)malloc(sizeof(double) * q * dim);
 	result = (double *)malloc(sizeof(double) * q * dim);
-
-	int i, j, world_size, world_rank, proc_chunk_size;
-	float *ft_data;
-    unsigned char *inc_data;
 
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -574,8 +547,6 @@ int main(int argc, char** argv) {
     ft_data = (float *)malloc(sizeof(float) * proc_chunk_size * dim);
 	cluster_assign = (int *)malloc(sizeof(int) * proc_chunk_size);
 	proc_data = (double *)malloc(sizeof(double) * proc_chunk_size * dim);
-	inc_data = (unsigned char *)malloc(sizeof(unsigned char) * proc_chunk_size * dim);
-
 
 	//initialize 2d arrays
 	for (i = 0; i < k; i++) {
@@ -591,9 +562,6 @@ int main(int argc, char** argv) {
     }
 	
     //start reading binary file
-    /*fseek(file, world_rank * proc_chunk_size * dim * sizeof(float), SEEK_SET);
-
-    fread(ft_data, sizeof(float), proc_chunk_size*dim, file);*/
     readFloatBin(path, ft_data, proc_chunk_size * dim, world_rank);
     //convert float values into doubles because computation numbers can get quite large
     for (i = 0; i < proc_chunk_size * dim; i++) {
@@ -704,12 +672,8 @@ if (world_rank == 0) {
 	free(cluster_centroid);
 	free(cluster_start);
 	free(cluster_size);
-
     free(proc_data);
-    free(inc_data);
 
 	MPI_Finalize();
-
-	return 0;
 }
 

@@ -20,7 +20,7 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
  *@param query: array of query points. Size Q * dim
  *@param result: array of the closest point to each respective query. Size Q * dim
  */
-void local_search(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
+void local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
 
 /**/
 int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int running_cnt, int *hash_assign); 

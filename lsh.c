@@ -1,48 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 #include <time.h>
 #include "lsh.h"
 #include "util/dataFunctions.h"
 #include "util/compFunctions.h"
 
-#define N 16000
+/*#define N 16000
 #define W 10000
 #define M 3
 #define DIM 8
-#define Q 1
+*/
 
-//function prototypes
-//int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals);
-//int dotprod(int dim, double *data, double **r, int d_idx, int r_idx); //dot product
-//int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int running_cnt, int *hash_assign); //compares a new hash value to existi											ng ones. returns total number of clusters we have so far
-//void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim); 
-//void local_search(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
-double distance(int dim, int query_idx, double *query, int data_idx, double *data);
+void local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result) {
+	int q, i, j, l, min_clust_idx = -1, min_point_idx, loopstart, loopend;
+	double min_distance = DBL_MAX, current_distance = 0.0, sum;
 
-/*******************/
-
-double distance(int dim, int query_idx, double *query, int data_idx, double *data) {
-	int i;
-	double distance = 0.0;
-
-	for (i = 0; i < dim; i++) {
-		distance += pow(data[data_idx+i] - query[query_idx+i], 2);
-	}
-
-	return distance;
-}
-
-void local_search(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result) {
-	int q, i, j, l, min_clust_idx = -1, min_point_idx;
-	double min_distance = 1000000.0, current_distance = 0.0, sum;
-
-	for (q = 0; q < Q*m; q+=m) {
+	for (q = 0; q < q0*m; q+=m) {
 		for (i = 0; i < m*running_cnt; i+=m) {
 			min_clust_idx = i / m;
 			for (j = 0; j < m; j++) {
 				if (temp_hash[q+j] != hash_vals[i+j]) {
-					printf("%d <-> %d\n", temp_hash[q+j], hash_vals[i+j]);
+					//printf("%d <-> %d\n", temp_hash[q+j], hash_vals[i+j]);
 					min_clust_idx = -1;
 					break;
 				}
@@ -54,6 +34,8 @@ void local_search(int dim, int ndata, double *data, int *cluster_size, int *clus
 		}
 
 		//after getting closest cluster
+        loopstart =  cluster_start[min_clust_idx];
+        loopend = cluster_start[min_clust_idx]+cluster_size[min_clust_idx]*dim;
 
 		if (min_clust_idx == -1) { //did not match a cluster hash
 			for (i = 0; i < dim; i++) {
@@ -62,8 +44,8 @@ void local_search(int dim, int ndata, double *data, int *cluster_size, int *clus
 		}
 		else { //search in matched cluster
 			//calculate distance to each point in the closest cluster
-			for (l = cluster_start[min_clust_idx]; l < cluster_start[min_clust_idx]+cluster_size[min_clust_idx]*dim; l+=dim) {
-				current_distance = distance(dim, q, query, l, data);
+			for (l = loopstart; l < loopend; l+=dim) {
+				current_distance = pnt2pntDistance(dim, q, query, l, data);
 				//count++;
 				//printf("%f\n", current_distance);
 				
@@ -112,15 +94,16 @@ int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int runn
 			hash_vals[running_cnt*m+i] = H[idx][i];
 		}
 		hash_assign[idx] = 0;
-		arr_val = clust_cnt[running_cnt];
-		arr_val++;
-		clust_cnt[running_cnt] = arr_val;
+		//arr_val = clust_cnt[running_cnt];
+		//arr_val++;
+		//clust_cnt[running_cnt] = arr_val;
+        clust_cnt[running_cnt]++;
 		running_cnt++;
 		return running_cnt;
 	}
 
 	//printf("%d\n", running_cnt);
-	for (i = 0; i < running_cnt; i+=m) { //for each item in our hash values
+	for (i = 0; i < running_cnt*m; i+=m) { //for each item in our hash values
 		for (j = 0; j < m; j++) { //for each of m values in each hash value
 			if (H[idx][j] != hash_vals[i+j]) { //if it is not a match
 				match_flag = 0;
@@ -128,13 +111,14 @@ int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int runn
 			}
 		} 
 		if (match_flag > 0) { // if we found a match
-			arr_val = clust_cnt[i/m];
-			arr_val++;
-			clust_cnt[i/m] = arr_val;
+			//arr_val = clust_cnt[i/m];
+			//arr_val++;
+			//clust_cnt[i/m] = arr_val;
+            clust_cnt[i/m]++;
 			hash_assign[idx] = i / m;
 			return running_cnt; //return, don't need to check the other hash values, running_cnt stays the same
 		}
-		match_flag = 1;
+		match_flag = 1; //reset flag
 	}
 
 	//if the hash did not match any others it is added to the list of hashes and the number of hashes increases by one
@@ -211,15 +195,9 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 		clust_start_idx += cluster_size[i];
 	}
 
-	/*printf("hash_assign\n");
-	for (i = 0; i < ndata; i++) {
-		printf("%d, ", hash_assign[i]);
-	}
-	printf("\n\n");*/
-
-	for (i = 0; i < running_cnt; i++) {
+	/*for (i = 0; i < running_cnt; i++) {
 		printf("%d\n", cluster_size[i]);
-	}
+	}*/
 
 	rearrange_data(data, cluster_size, cluster_start, hash_assign, hash_vals, H, running_cnt, m, ndata, dim);
 
@@ -228,7 +206,7 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 
 int main(int argc, char** argv) {
 	
-	int q, i, j, num_clusters = 0, w, m, ndata, dim, k, sum = 0, temp_hash_sum = 0, q_idx = 0;
+	int q, q0, i, j, num_clusters = 0, w, m, ndata, dim, k, sum = 0, temp_hash_sum = 0, q_idx = 0;
 	double rnum;
 	int *cluster_size, *cluster_start, **H, *hash_vals, *query_hash;
 	double *data, **r, *b, *query, *result;
@@ -237,15 +215,16 @@ int main(int argc, char** argv) {
 	dim = atoi(argv[3]);
 	m = atoi(argv[4]);
 	w = atoi(argv[5]);
+    q0 = atoi(argv[6]);
 
 	data = (double *)malloc(sizeof(double) * ndata * dim);
 	b = (double *)malloc(sizeof(double) * m);
 	cluster_size = (int *)malloc(sizeof(int) * ndata);
 	cluster_start = (int *)malloc(sizeof(int) * ndata);
 	hash_vals = (int *)malloc(sizeof(int) * m * ndata);
-	query_hash = (int *)malloc(sizeof(int) * m * Q);
-	query = (double *)malloc(sizeof(double) * Q * dim);
-	result = (double *)malloc(sizeof(double) * Q * dim);
+	query_hash = (int *)malloc(sizeof(int) * m * q0);
+	query = (double *)malloc(sizeof(double) * q0 * dim);
+	result = (double *)malloc(sizeof(double) * q0 * dim);
 	H = (int **)malloc(sizeof(int *) * ndata);
 	r = (double **)malloc(sizeof(double *) * m);
 
@@ -263,7 +242,7 @@ int main(int argc, char** argv) {
 		cluster_start[i] = -1;
 	}
 
-	srand(69);
+	srand(23);
 
 	//initialize random data points
 	//printf("\nData\n");
@@ -278,20 +257,20 @@ int main(int argc, char** argv) {
 	}
 
 	//initialize m random vectors
-	printf("\nR vectors\n");
+	//printf("\nR vectors\n");
 	for (i = 0; i < m; i++) {
-		printf("%d) ", i);
+		//printf("%d) ", i);
 		for (j = 0; j < dim; j++) {
 			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
 			r[i][j] = rnum;
-			printf("%f,", rnum);
+			//printf("%f,", rnum);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 	
 	//initialize random queries
 	printf("\nQueries\n");
-	for (i = 0; i < Q*dim; i+=dim) {
+	for (i = 0; i < q0*dim; i+=dim) {
 		printf("%d) ", i/dim);
 		for (j = 0; j < dim; j++) {
 			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
@@ -308,16 +287,22 @@ int main(int argc, char** argv) {
 
 	num_clusters = LSH(dim, ndata, data, m, r, b, w, num_clusters, cluster_size, cluster_start, H, hash_vals);
 
-	printf("The number of clusters is %d\n\n", num_clusters);
+	printf("The number of clusters is %d\n", num_clusters);
 	
-	for (i = 0; i < num_clusters; i++) {
+	/*for (i = 0; i < num_clusters; i++) {
 		sum += cluster_size[i];
-	}
+	}*/
+    /*for (i = 0; i < num_clusters * m; i+=m) {
+        for (j = 0; j < m; j++) {
+            printf("%d, ", hash_vals[i+j]);
+        }
+        printf("\n");
+    }*/
 
-	printf("Average points per cluster is %d\n\n", sum / num_clusters);
+	//printf("Average points per cluster is %d\n\n", sum / num_clusters);
 
 	//get hash values for the queries
-	for (q = 0; q < Q*dim; q+=dim) {
+	for (q = 0; q < q0*dim; q+=dim) {
 		for (i = 0; i < m; i++) {
 			for (j = 0; j < dim; j++) {
 				temp_hash_sum += query[q+j] * r[i][j];
@@ -329,16 +314,16 @@ int main(int argc, char** argv) {
 		q_idx += m;
 	}
 
-	printf("\n");
+	/*printf("\n");
 	for (i = 0; i < m; i++) {
 		printf("%d, ", query_hash[i]);	
 	}
-	printf("\n");
+	printf("\n");*/
 
-	local_search(dim, ndata, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
+	local_search(dim, ndata, q0, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
 
 	printf("\nResults\n");
-	for (i = 0; i < Q*dim; i+=dim) {
+	for (i = 0; i < q0*dim; i+=dim) {
 		printf("%d) ", i/dim);
 		for (j = 0; j < dim; j++) {
 			printf("%f,", result[i+j]);
