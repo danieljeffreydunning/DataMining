@@ -12,4 +12,6 @@
  */
 void kdtree(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_bdry, double **cluster_centroid, int *cluster_assign);
 
-int search_kdtree(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_bdry, double *query, double *result_pt);
+int search_kdtree(int dim, int ndata, double *data, int k, int q, int *cluster_size, int *cluster_start, double **cluster_bdry, double *query, double *result_pt);
+
+void runKDTree(char *path, int ndata, int dim, int k, int q);

@@ -7,19 +7,16 @@
 #include <float.h>
 #include "kmeans.h"
 #include "util/dataFunctions.h"
-
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define LOG2(X) log((X)) / log(2)
+#include "util/compFunctions.h"
 
 //function prototypes
 int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
 void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
 void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
 int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt, int world_size, int world_rank, int q);
-double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid);
-double calculatePointDistance(int dim, int clust_idx, int query_idx, double *query, double **cluster_centroid);
-double distance(int dim, int query_idx, double *query, int data_idx, double *data);
+//double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid);
+//double calculatePointDistance(int dim, int clust_idx, int query_idx, double *query, double **cluster_centroid);
+//double distance(int dim, int query_idx, double *query, int data_idx, double *data);
 void initializeCentroids(int dim, int ndata, double *data, int k, double **cluster_centroid, int start_idx, int m, int world_rank, int world_size);
 //end prototypes
 
@@ -36,7 +33,8 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 			cent_comp_arr[i] = 0.0;
 		}
 		for (i = 0; i < k; i++) { //for each cluster
-			temp_dist = calculatePointDistance(dim, i, j, query, cluster_centroid); //calculate distance to each centroid and get local minimum
+			//temp_dist = calculatePointDistance(dim, i, j, query, cluster_centroid); //calculate distance to each centroid and get local minimum
+            temp_dist = pnt2centDistance(dim, i, j, query, cluster_centroid); 
 
 			cent_comp_arr[i] = temp_dist; //store because we'll need it later for comparing distance to radii
 			
@@ -53,7 +51,8 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
         loopend = cluster_start[min_clust_idx]+cluster_size[min_clust_idx]*dim;
 
 		for (l = loopstart; l < loopend; l+=dim) {
-			temp_dist = distance(dim, j, query, l, data);
+			//temp_dist = distance(dim, j, query, l, data);
+            temp_dist = pnt2pntDistance(dim, j, query, l, data);
 			count++;
 			point_dist = MIN(point_dist, temp_dist);
 			if (point_dist == temp_dist) {
@@ -74,7 +73,8 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 				if (rad_comp_dist <= point_dist) {
 					//calculate distance to each point in the next closest cluster(s)
 					for (l = cluster_start[i]; l < cluster_start[i]+cluster_size[i]*dim; l+=dim) {
-						temp_dist = distance(dim, j, query, l, data);
+						//temp_dist = distance(dim, j, query, l, data);
+                        temp_dist = pnt2pntDistance(dim, j, query, l, data);
 						count++;
 
 						point_dist = MIN(point_dist, temp_dist);
@@ -263,7 +263,8 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
 		}
 		for (j = loopstart; j < loopend; j+=dim) {
 			//get distance to each point in each cluster and remember the largest
-			temp_max = calculateClusterDistance(dim, j, data, i, cluster_centroid);
+			//temp_max = calculateClusterDistance(dim, j, data, i, cluster_centroid);
+            temp_max =  pnt2centDistance(dim, i, j, data, cluster_centroid);
 			max_dist = MAX(max_dist, temp_max);
 		}
 		cluster_radius[i] = max_dist;
@@ -337,7 +338,7 @@ void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_si
     free(temp_centroid);
 }
 
-double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid) {
+/*double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid) {
 	int i;
 	double distance = 0.0;
 
@@ -348,15 +349,17 @@ double calculateClusterDistance(int dim, int data_idx, double *data, int clust_i
 	distance = sqrt(distance);
 
 	return distance;
-}
+}*/
 
-double calculatePointDistance(int dim, int clust_idx, int query_idx, double *query, double **cluster_centroid) {
+/*double calculatePointDistance(int dim, int clust_idx, int query_idx, double *query, double **cluster_centroid) {
 	int i;
 	double distance = 0.0;
 
 	for (i = 0; i < dim; i++) {
 		distance += pow(cluster_centroid[clust_idx][i] - query[query_idx+i], 2);
 	}
+
+    distance = sqrt(distance);
 
 	return distance;
 }
@@ -369,8 +372,10 @@ double distance(int dim, int query_idx, double *query, int data_idx, double *dat
 		distance += pow(data[data_idx+i] - query[query_idx+i], 2);
 	}
 
+    distance = sqrt(distance);
+
 	return distance;
-}
+}*/
 
 void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank) {
 	int i, j, l, cent_idx, temp_data_idx = 0, clust_size_idx_cnt = 0, empty_idx = k+5;
@@ -396,7 +401,8 @@ void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int 
 
 	for (i = 0; i < ndata*dim; i+=dim) { //each data point
 		for (j = 0; j < k; j++) { //each centroid 
-			temp_distance = calculateClusterDistance(dim, i, data, j, cluster_centroid);
+			//temp_distance = calculateClusterDistance(dim, i, data, j, cluster_centroid);
+            temp_distance = pnt2centDistance(dim, j, i, data, cluster_centroid);
             l_td = (long int) temp_distance;
             
 			distance = MIN(distance, temp_distance);
@@ -458,10 +464,11 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 	for (j = 0; j < ndata*dim; j+=dim) { //for each data point
 		for (i = 0; i < m; i++) { //for given m centroids
 			if (i != place_idx) {
-				for (l = 0; l < dim; l++) {
+                distance = pnt2centDistance(dim, i, j, data, cluster_centroid);
+				/*for (l = 0; l < dim; l++) {
 					distance += pow(cluster_centroid[i][l] - data[j+l], 2); 		
 				}	
-				distance = sqrt(distance);
+				distance = sqrt(distance);*/
 				//get min distance to a centroid for that point
 				point_min = MIN(point_min, distance);
                 l_pnt = (long int) point_min;
@@ -509,36 +516,13 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 
 
 
-int main(int argc, char** argv) {
-	
-
-	MPI_Init(NULL, NULL);
-
-	int kcheck = 1, rint, cycles, pointcnt, strsize, q;
-    int k, dim, ndata, data_remainder;
-    char *path;
+void runKMeans(char *path, int ndata, int dim, int k, int q) {
+	int kcheck = 1, rint, cycles, pointcnt, strsize, i, j, world_size, world_rank, proc_chunk_size, data_remainder;
+	int *cluster_assign, *cluster_size,  *cluster_start;
+    float *ft_data;
 	double r;
 	double *proc_data, **cluster_centroid, *cluster_radius, *query, *result;
-	int *cluster_assign, *cluster_size,  *cluster_start;
     
-    strsize = strlen(argv[1]);
-    k = atoi(argv[2]);
-    dim = atoi(argv[3]);
-    ndata = atoi(argv[4]);
-    q = atoi(argv[5]);
-
-    //get path from command line
-    path = (char *)malloc(sizeof(char) * strsize);
-    path[0] = '\0';
-    strcat(path, argv[1]);
-    
-    /*FILE *file = fopen(path, "rb");
-
-    if (file == NULL) { //if no file
-        printf("File not found, program exited with code 0\n");
-        return 0;
-    }*/
-
     //seed random number
 	srand(23);
 	
@@ -549,10 +533,6 @@ int main(int argc, char** argv) {
 
 	query = (double *)malloc(sizeof(double) * q * dim);
 	result = (double *)malloc(sizeof(double) * q * dim);
-
-	int i, j, world_size, world_rank, proc_chunk_size;
-	float *ft_data;
-    unsigned char *inc_data;
 
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -567,8 +547,6 @@ int main(int argc, char** argv) {
     ft_data = (float *)malloc(sizeof(float) * proc_chunk_size * dim);
 	cluster_assign = (int *)malloc(sizeof(int) * proc_chunk_size);
 	proc_data = (double *)malloc(sizeof(double) * proc_chunk_size * dim);
-	inc_data = (unsigned char *)malloc(sizeof(unsigned char) * proc_chunk_size * dim);
-
 
 	//initialize 2d arrays
 	for (i = 0; i < k; i++) {
@@ -584,9 +562,6 @@ int main(int argc, char** argv) {
     }
 	
     //start reading binary file
-    /*fseek(file, world_rank * proc_chunk_size * dim * sizeof(float), SEEK_SET);
-
-    fread(ft_data, sizeof(float), proc_chunk_size*dim, file);*/
     readFloatBin(path, ft_data, proc_chunk_size * dim, world_rank);
     //convert float values into doubles because computation numbers can get quite large
     for (i = 0; i < proc_chunk_size * dim; i++) {
@@ -697,12 +672,8 @@ if (world_rank == 0) {
 	free(cluster_centroid);
 	free(cluster_start);
 	free(cluster_size);
-
     free(proc_data);
-    free(inc_data);
 
 	MPI_Finalize();
-
-	return 0;
 }
 
