@@ -28,7 +28,7 @@ void local_search(int dim, int ndata, int q0, double *data, int *cluster_size, i
 				}
 			}
 			if (min_clust_idx != -1) {
-				printf("\n%d\n", min_clust_idx);
+				//printf("\n%d\n", min_clust_idx);
 				break;
 			}
 		}
@@ -204,27 +204,23 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 	return running_cnt;
 }
 
-int main(int argc, char** argv) {
+void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
 	
-	int q, q0, i, j, num_clusters = 0, w, m, ndata, dim, k, sum = 0, temp_hash_sum = 0, q_idx = 0;
-	double rnum;
+	int qi, i, j, num_clusters = 0, sum = 0, temp_hash_sum = 0, q_idx = 0;
 	int *cluster_size, *cluster_start, **H, *hash_vals, *query_hash;
+    float *ft_data;
+	double rnum;
 	double *data, **r, *b, *query, *result;
 
-	ndata = atoi(argv[2]);
-	dim = atoi(argv[3]);
-	m = atoi(argv[4]);
-	w = atoi(argv[5]);
-    q0 = atoi(argv[6]);
-
+    ft_data = (float *)malloc(sizeof(float) * ndata * dim);
 	data = (double *)malloc(sizeof(double) * ndata * dim);
 	b = (double *)malloc(sizeof(double) * m);
 	cluster_size = (int *)malloc(sizeof(int) * ndata);
 	cluster_start = (int *)malloc(sizeof(int) * ndata);
 	hash_vals = (int *)malloc(sizeof(int) * m * ndata);
-	query_hash = (int *)malloc(sizeof(int) * m * q0);
-	query = (double *)malloc(sizeof(double) * q0 * dim);
-	result = (double *)malloc(sizeof(double) * q0 * dim);
+	query_hash = (int *)malloc(sizeof(int) * m * q);
+	query = (double *)malloc(sizeof(double) * q * dim);
+	result = (double *)malloc(sizeof(double) * q * dim);
 	H = (int **)malloc(sizeof(int *) * ndata);
 	r = (double **)malloc(sizeof(double *) * m);
 
@@ -246,7 +242,7 @@ int main(int argc, char** argv) {
 
 	//initialize random data points
 	//printf("\nData\n");
-	for (i = 0; i < ndata*dim; i+=dim) {
+	/*for (i = 0; i < ndata*dim; i+=dim) {
 		//printf("%d) ", i/dim);
 		for (j = 0; j < dim; j++) {
 			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
@@ -254,7 +250,13 @@ int main(int argc, char** argv) {
 			//printf("%f,", rnum);
 		}
 		//printf("\n");
-	}
+	}*/
+    //start reading binary file
+    readFloatBin(path, ft_data, ndata * dim, 0);
+    //convert float values into doubles because computation numbers can get quite large
+    for (i = 0; i < ndata * dim; i++) {
+        data[i] = (double) ft_data[i];
+    }
 
 	//initialize m random vectors
 	//printf("\nR vectors\n");
@@ -269,26 +271,31 @@ int main(int argc, char** argv) {
 	}
 	
 	//initialize random queries
-	printf("\nQueries\n");
-	for (i = 0; i < q0*dim; i+=dim) {
-		printf("%d) ", i/dim);
+	//printf("\nQueries\n");
+	for (i = 0; i < q*dim; i+=dim) {
+		//printf("%d) ", i/dim);
 		for (j = 0; j < dim; j++) {
 			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
 			query[i+j] = rnum;
-			printf("%f,", rnum);
+			//printf("%f,", rnum);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 
 	for (i = 0; i < m; i++) {
 		b[i] = 0;
 	}
 
-
 	num_clusters = LSH(dim, ndata, data, m, r, b, w, num_clusters, cluster_size, cluster_start, H, hash_vals);
 
-	printf("The number of clusters is %d\n", num_clusters);
+	printf("\nThe number of clusters is %d\n", num_clusters);
 	
+    printf("Cluster Sizes:\n");
+    for (i = 0; i < num_clusters; i++) {
+        printf("%d\n", cluster_size[i]);
+    }
+    printf("\n");
+
 	/*for (i = 0; i < num_clusters; i++) {
 		sum += cluster_size[i];
 	}*/
@@ -302,10 +309,10 @@ int main(int argc, char** argv) {
 	//printf("Average points per cluster is %d\n\n", sum / num_clusters);
 
 	//get hash values for the queries
-	for (q = 0; q < q0*dim; q+=dim) {
+	for (qi = 0; qi < q*dim; qi+=dim) {
 		for (i = 0; i < m; i++) {
 			for (j = 0; j < dim; j++) {
-				temp_hash_sum += query[q+j] * r[i][j];
+				temp_hash_sum += query[qi+j] * r[i][j];
 			}
 			temp_hash_sum = (temp_hash_sum - b[i]) / w;
 			query_hash[q_idx+i] = temp_hash_sum;
@@ -320,16 +327,16 @@ int main(int argc, char** argv) {
 	}
 	printf("\n");*/
 
-	local_search(dim, ndata, q0, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
+	local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
 
-	printf("\nResults\n");
-	for (i = 0; i < q0*dim; i+=dim) {
+	/*printf("\nResults\n");
+	for (i = 0; i < q*dim; i+=dim) {
 		printf("%d) ", i/dim);
 		for (j = 0; j < dim; j++) {
 			printf("%f,", result[i+j]);
 		}
 		printf("\n");
-	}
+	}*/
 
 	//free memory
 	for (i = 0; i < ndata; i++) {
@@ -346,6 +353,4 @@ int main(int argc, char** argv) {
 	free(cluster_start);
 	free(b);
 	free(data);
-
-	return 0;
 }

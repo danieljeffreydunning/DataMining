@@ -29,3 +29,5 @@ int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int runn
  *temp_has: array set to the same as hash_vals. Will be used to do the reordering of values and then copied back into hash_vals. Size m * ndata
  */
 void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim); 
+
+void runLSH(char *path, int ndata, int dim, int m, int w, int q);
