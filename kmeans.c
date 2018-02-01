@@ -9,17 +9,6 @@
 #include "util/dataFunctions.h"
 #include "util/compFunctions.h"
 
-//function prototypes
-int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
-void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
-void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank);
-int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt, int world_size, int world_rank, int q);
-//double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid);
-//double calculatePointDistance(int dim, int clust_idx, int query_idx, double *query, double **cluster_centroid);
-//double distance(int dim, int query_idx, double *query, int data_idx, double *data);
-void initializeCentroids(int dim, int ndata, double *data, int k, double **cluster_centroid, int start_idx, int m, int world_rank, int world_size);
-//end prototypes
-
 int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt, int world_size, int world_rank, int q) {
 	int i, j, l, min_clust_idx, min_point_idx, global_min_clust_idx, global_min_point_idx, count = 0, loopstart, loopend;
 	double cent_dist = DBL_MAX, point_dist = DBL_MAX, global_cent_dist, global_point_dist, temp_dist, rad_comp_dist;
@@ -27,7 +16,7 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 
 	cent_comp_arr = (double *)malloc(sizeof(double) * k);
 
-	for (j = 0; j < q; j++) { // for each query
+	for (j = 0; j < q * dim; j+=dim) { // for each query
 		//initialize comp arr
 		for (i = 0; i < k; i++) {
 			cent_comp_arr[i] = 0.0;
@@ -44,8 +33,6 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 			}
 
 		}
-        //printf("%d has min cent dist %f idx at %d\n", world_rank, cent_dist, min_clust_idx);
-
 		//calculate distance to each point in the closest cluster and get the local minimum
         loopstart = cluster_start[min_clust_idx];
         loopend = cluster_start[min_clust_idx]+cluster_size[min_clust_idx]*dim;
@@ -59,9 +46,6 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 				min_point_idx = l;
 			}	
 		}
-
-        //printf("%d had min point_dist %f\n", world_rank, point_dist);
-
         //all procs need to have the same minimum distance to a point in the cluster
         MPI_Allreduce(&point_dist, &global_point_dist, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         point_dist = global_point_dist;
@@ -92,7 +76,7 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
         //if we had the shortest distance, we will add our result to the result array
         if (point_dist == global_point_dist) {
 		    for (i = 0; i < dim; i++) {
-		    	result_pt[j*dim+i] = data[min_point_idx+i];
+		    	result_pt[j+i] = data[min_point_idx+i];
 	    	}
         }
         
@@ -104,7 +88,6 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 
 	return count;
 }
-
 
 int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank) {
 	int i, j, doneflag = 0, cycle_cnt = 1, loopstart, loopend, stallflag = 0, empty_idx = k+5, cycle_check = 0, f = 0, diff = 0, proc_diff = 0;
@@ -324,7 +307,6 @@ void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_si
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		//now get the averages for each dimension in temp_centroid and put it in cluster_centroid
-		//printf("cluster centroid ");
 		for (j = 0; j < dim; j++) {
 			//printf("%f\t,", temp_centroid[j]); 
 			cluster_centroid[i][j] = temp_proc_cent[j] / temp_clust_size[i];
@@ -337,45 +319,6 @@ void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_si
     free(temp_proc_cent);
     free(temp_centroid);
 }
-
-/*double calculateClusterDistance(int dim, int data_idx, double *data, int clust_idx, double **cluster_centroid) {
-	int i;
-	double distance = 0.0;
-
-	for (i = 0; i < dim; i++) {
-		distance += pow(cluster_centroid[clust_idx][i] - data[data_idx+i], 2);
-	}
-
-	distance = sqrt(distance);
-
-	return distance;
-}*/
-
-/*double calculatePointDistance(int dim, int clust_idx, int query_idx, double *query, double **cluster_centroid) {
-	int i;
-	double distance = 0.0;
-
-	for (i = 0; i < dim; i++) {
-		distance += pow(cluster_centroid[clust_idx][i] - query[query_idx+i], 2);
-	}
-
-    distance = sqrt(distance);
-
-	return distance;
-}
-
-double distance(int dim, int query_idx, double *query, int data_idx, double *data) {
-	int i;
-	double distance = 0.0;
-
-	for (i = 0; i < dim; i++) {
-		distance += pow(data[data_idx+i] - query[query_idx+i], 2);
-	}
-
-    distance = sqrt(distance);
-
-	return distance;
-}*/
 
 void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int world_size, int world_rank) {
 	int i, j, l, cent_idx, temp_data_idx = 0, clust_size_idx_cnt = 0, empty_idx = k+5;
@@ -401,13 +344,11 @@ void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int 
 
 	for (i = 0; i < ndata*dim; i+=dim) { //each data point
 		for (j = 0; j < k; j++) { //each centroid 
-			//temp_distance = calculateClusterDistance(dim, i, data, j, cluster_centroid);
             temp_distance = pnt2centDistance(dim, j, i, data, cluster_centroid);
             l_td = (long int) temp_distance;
             
 			distance = MIN(distance, temp_distance);
             l_dist = (long int) distance;
-
             //use long int values to compare to avoid complications with floats
 			if (l_dist == l_td)
 				cent_idx = j;
@@ -437,13 +378,10 @@ void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int 
 	}
 
 	//get cluster_starts from sizes
-	//printf("cluster size, ");
 	for (l = 0; l < k; l++) {
 		cluster_start[l] = clust_size_idx_cnt;
 		clust_size_idx_cnt += cluster_size[l];
-		//printf("%d,", cluster_size[l]); 
 	}
-	//printf("\n");
 
 	free(temp_clust_size);
 	free(temp_assign);
@@ -459,16 +397,11 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 	double *temp_point;
 
 	temp_point = (double *)malloc(sizeof(double) * dim);
-	//printf("here1\n");
 
 	for (j = 0; j < ndata*dim; j+=dim) { //for each data point
 		for (i = 0; i < m; i++) { //for given m centroids
 			if (i != place_idx) {
                 distance = pnt2centDistance(dim, i, j, data, cluster_centroid);
-				/*for (l = 0; l < dim; l++) {
-					distance += pow(cluster_centroid[i][l] - data[j+l], 2); 		
-				}	
-				distance = sqrt(distance);*/
 				//get min distance to a centroid for that point
 				point_min = MIN(point_min, distance);
                 l_pnt = (long int) point_min;
@@ -513,25 +446,17 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 	}
 }
 
-
-
-
-void runKMeans(char *path, int ndata, int dim, int k, int q) {
+void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
 	int kcheck = 1, rint, cycles, pointcnt, strsize, i, j, world_size, world_rank, proc_chunk_size, data_remainder;
 	int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
-	double r;
-	double *proc_data, **cluster_centroid, *cluster_radius, *query, *result;
+	double *proc_data, **cluster_centroid, *cluster_radius, *result;
     
-    //seed random number
-	srand(23);
-	
 	cluster_size = (int *)malloc(sizeof(int) * k);
 	cluster_start = (int *)malloc(sizeof(int) * k);
 	cluster_centroid = (double **)malloc(sizeof(double *) * k);
 	cluster_radius = (double *)malloc(sizeof(double) * k);
 
-	query = (double *)malloc(sizeof(double) * q * dim);
 	result = (double *)malloc(sizeof(double) * q * dim);
 
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -557,25 +482,12 @@ void runKMeans(char *path, int ndata, int dim, int k, int q) {
 		cluster_size[i] = 0;
 	}
 
-    for (i = 0; i < q * dim; i++) {
-        query[i] = 0.0;
-    }
-	
     //start reading binary file
     readFloatBin(path, ft_data, proc_chunk_size * dim, world_rank);
     //convert float values into doubles because computation numbers can get quite large
     for (i = 0; i < proc_chunk_size * dim; i++) {
         proc_data[i] = (double) ft_data[i];
     }
-
-    //initialize random query points unless they are coming from a file
-	for (i = 0; i < q * dim; i+=1000) {
-        rint = rand() % 1000; //for size purposes, only have 1 out of every 1000 genes be expressed only up to an amount of 20
-		r = ((double) rand() / (double)(RAND_MAX)) * 20.0;
-        
-		query[rint] = r; 
-		//printf("%f,", r);
-	}
 
 	printf("\n"); //the first 1
 	for (i = 0; i < dim; i+=dim) {
@@ -587,23 +499,6 @@ void runKMeans(char *path, int ndata, int dim, int k, int q) {
 	}
 
 	if (world_rank == 0) {
-        //initialize random query points unless they are coming from a file
-	    for (i = 0; i < q * dim; i+=1000) {
-            rint = rand() % 1000; //for size purposes, only have 1 out of every 1000 genes be expressed only up to an amount of 20
-	    	r = ((double) rand() / (double)(RAND_MAX)) * 20.0;
-        
-	    	query[rint] = r; 
-		    printf("%f,", r);
-    	}
-        printf("\n");
-        MPI_Bcast(&query[0], dim * q, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-        /*printf("Query: ");
-        for (i = 0; i < 1000; i++) {
-            printf("%f, ", query[i]);
-        }
-        printf("\n");*/
-
 		//initialize centroids
 		rint = rand() % proc_chunk_size;
 		for (i = 0; i < dim; i++) {
@@ -615,13 +510,11 @@ void runKMeans(char *path, int ndata, int dim, int k, int q) {
 	}
 
 	else { // not root
-        MPI_Bcast(&query[0], dim * q, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&cluster_centroid[0][0], dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	}
 
     //before while loops good to make sure everyone is on the same page
 	MPI_Barrier(MPI_COMM_WORLD);
-
 
 	while (kcheck < k) {
         //printf("%d kcheck %d\n", world_rank, kcheck);
@@ -630,44 +523,18 @@ void runKMeans(char *path, int ndata, int dim, int k, int q) {
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
 
-    if (world_rank == 0) {
-    	/*printf("\nCentroids\n");
-    	for (i = 0; i < k; i++) {
-    		for (j = 0; j < 10; j++) {
-	    		printf("%f,", cluster_centroid[i][j]);
-	    	}
-	    	printf("\n");
-	    }*/
-    }
-
 	cycles = kmeans(dim, proc_chunk_size, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, cluster_assign, world_size, world_rank);
-	
-    /*printf("\nCentroid sizes ");
-	for (i = 0; i < k; i++) {
-		printf("%d,", cluster_size[i]);
-	}
-	printf("\n");*/
-
 
 if (world_rank == 0) {
 
 	printf("\ncycles %d\n", cycles);
-
-    /*printf("Cluster radii: ");
-    for (i = 0; i < k; i++) {
-        printf("%f, ", cluster_radius[i]);
-    }
-    printf("\n");*/
-
-	//printf("\n");
 }
 	pointcnt = search_kmeans(dim, ndata, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, query, result, world_size, world_rank, q);
 
-	printf("number of points checked %d\n\n", pointcnt/q);
+	printf("number of points checked %d\n\n", pointcnt);
 
     free(ft_data);
 	free(result);
-	free(query);
 	free(cluster_radius);
 	free(cluster_centroid);
 	free(cluster_start);

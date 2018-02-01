@@ -13,22 +13,20 @@
 #define DIM 8
 */
 
-void local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result) {
-	int q, i, j, l, min_clust_idx = -1, min_point_idx, loopstart, loopend;
+int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result) {
+	int q, qhash, i, j, l, min_clust_idx = -1, min_point_idx, loopstart, loopend, count = 0;
 	double min_distance = DBL_MAX, current_distance = 0.0, sum;
 
-	for (q = 0; q < q0*m; q+=m) {
+	for (q = 0, qhash = 0; q < q0*dim; q+=dim, qhash+=m) {
 		for (i = 0; i < m*running_cnt; i+=m) {
 			min_clust_idx = i / m;
 			for (j = 0; j < m; j++) {
-				if (temp_hash[q+j] != hash_vals[i+j]) {
-					//printf("%d <-> %d\n", temp_hash[q+j], hash_vals[i+j]);
+				if (temp_hash[qhash+j] != hash_vals[i+j]) {
 					min_clust_idx = -1;
 					break;
 				}
 			}
 			if (min_clust_idx != -1) {
-				//printf("\n%d\n", min_clust_idx);
 				break;
 			}
 		}
@@ -44,15 +42,16 @@ void local_search(int dim, int ndata, int q0, double *data, int *cluster_size, i
 		}
 		else { //search in matched cluster
 			//calculate distance to each point in the closest cluster
+            count = min_clust_idx;
 			for (l = loopstart; l < loopend; l+=dim) {
 				current_distance = pnt2pntDistance(dim, q, query, l, data);
-				//count++;
-				//printf("%f\n", current_distance);
 				
 				min_distance = MIN(min_distance, current_distance);
 				if (min_distance == current_distance) {
 					min_point_idx = l;
-				}	
+				}
+
+                //count++;    
 			}
 			for (i = 0; i < dim; i++) {
 				result[q+i] = data[min_point_idx+i];
@@ -60,6 +59,7 @@ void local_search(int dim, int ndata, int q0, double *data, int *cluster_size, i
 		}
 		min_clust_idx = -1;
 	}
+    return count;
 }
 
 void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim) {
@@ -204,13 +204,13 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 	return running_cnt;
 }
 
-void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
+void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) {
 	
-	int qi, i, j, num_clusters = 0, sum = 0, temp_hash_sum = 0, q_idx = 0;
+	int qi, i, j, num_clusters = 0, sum = 0, temp_hash_sum = 0, q_idx = 0, count;
 	int *cluster_size, *cluster_start, **H, *hash_vals, *query_hash;
     float *ft_data;
-	double rnum;
-	double *data, **r, *b, *query, *result;
+    double rnum;
+	double *data, **r, *b, *result;
 
     ft_data = (float *)malloc(sizeof(float) * ndata * dim);
 	data = (double *)malloc(sizeof(double) * ndata * dim);
@@ -219,7 +219,6 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
 	cluster_start = (int *)malloc(sizeof(int) * ndata);
 	hash_vals = (int *)malloc(sizeof(int) * m * ndata);
 	query_hash = (int *)malloc(sizeof(int) * m * q);
-	query = (double *)malloc(sizeof(double) * q * dim);
 	result = (double *)malloc(sizeof(double) * q * dim);
 	H = (int **)malloc(sizeof(int *) * ndata);
 	r = (double **)malloc(sizeof(double *) * m);
@@ -238,19 +237,6 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
 		cluster_start[i] = -1;
 	}
 
-	srand(23);
-
-	//initialize random data points
-	//printf("\nData\n");
-	/*for (i = 0; i < ndata*dim; i+=dim) {
-		//printf("%d) ", i/dim);
-		for (j = 0; j < dim; j++) {
-			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
-			data[i+j] = rnum;
-			//printf("%f,", rnum);
-		}
-		//printf("\n");
-	}*/
     //start reading binary file
     readFloatBin(path, ft_data, ndata * dim, 0);
     //convert float values into doubles because computation numbers can get quite large
@@ -258,28 +244,13 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
         data[i] = (double) ft_data[i];
     }
 
+    srand(405);
 	//initialize m random vectors
-	//printf("\nR vectors\n");
 	for (i = 0; i < m; i++) {
-		//printf("%d) ", i);
 		for (j = 0; j < dim; j++) {
 			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
 			r[i][j] = rnum;
-			//printf("%f,", rnum);
 		}
-		//printf("\n");
-	}
-	
-	//initialize random queries
-	//printf("\nQueries\n");
-	for (i = 0; i < q*dim; i+=dim) {
-		//printf("%d) ", i/dim);
-		for (j = 0; j < dim; j++) {
-			rnum = ((double)rand() / (double)(RAND_MAX)) * 100.0;
-			query[i+j] = rnum;
-			//printf("%f,", rnum);
-		}
-		//printf("\n");
 	}
 
 	for (i = 0; i < m; i++) {
@@ -296,16 +267,6 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
     }
     printf("\n");
 
-	/*for (i = 0; i < num_clusters; i++) {
-		sum += cluster_size[i];
-	}*/
-    /*for (i = 0; i < num_clusters * m; i+=m) {
-        for (j = 0; j < m; j++) {
-            printf("%d, ", hash_vals[i+j]);
-        }
-        printf("\n");
-    }*/
-
 	//printf("Average points per cluster is %d\n\n", sum / num_clusters);
 
 	//get hash values for the queries
@@ -321,22 +282,15 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
 		q_idx += m;
 	}
 
-	/*printf("\n");
-	for (i = 0; i < m; i++) {
-		printf("%d, ", query_hash[i]);	
-	}
-	printf("\n");*/
+    /*for (i = 0; i < q*m; i+=m) {
+        for (j = 0; j < m; j++) {
+            printf("%d\t", query_hash[i+j]);
+        }
+        printf("\n");
+    }*/
 
-	local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
-
-	/*printf("\nResults\n");
-	for (i = 0; i < q*dim; i+=dim) {
-		printf("%d) ", i/dim);
-		for (j = 0; j < dim; j++) {
-			printf("%f,", result[i+j]);
-		}
-		printf("\n");
-	}*/
+	count = local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
+    printf("Number of points checked %d\n\n", count);
 
 	//free memory
 	for (i = 0; i < ndata; i++) {
@@ -347,7 +301,6 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q) {
 	}
 	free(query_hash);
 	free(hash_vals);
-	free(query);
 	free(result);
 	free(cluster_size);
 	free(cluster_start);
