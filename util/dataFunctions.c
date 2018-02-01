@@ -133,3 +133,20 @@ void readCharBin(char *path, unsigned char *data, int chunk_size, int rank) {
 
     fclose(file);
 }
+
+void write_results(int dim, int ndata, double* data, int* cluster_assign) {
+	int i;
+	FILE* file;
+
+	file = fopen("pyclustdata.txt", "w");
+	fprintf(file, "%d\n", dim);
+	fprintf(file, "%d\n", ndata);
+
+	for (i = 0; i < dim * ndata; i++)
+		fprintf(file, "%lf\n", data[i]);
+
+	for (i = 0; i < ndata; i++)
+		fprintf(file, "%d\n", cluster_assign[i]);
+
+	fclose(file);
+}
