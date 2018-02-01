@@ -11,7 +11,7 @@ void bipartition(int dim, int i0, int im, double *data, int *cluster_size, int *
     int loopstart = i0, loopend = im + 1, temp_cluster_size = im - i0 + 1;
     int *temp_assign;
     int i, j, clust1st = 0, clust2st = temp_cluster_size - 1, clust1sizecnt=0, clust2sizecnt=0;
-    int clust1bound = clust1st, clust2bound = clust2st; //in array, right bound for clust1 (left is start) and left bound for clust2 (end is right) both inclusive
+    int tempclust1bound = clust1st, tempclust2bound = clust2st, clust1bnd = i0, clust2bnd = im; //in array, right bound for clust1 (left is start) and left bound for clust2 (end is right) both inclusive
     double *var_arr, *sum_arr, *mean_arr, *min_arr, *max_arr;
     double var_val = 0.0;
     int var_idx;
@@ -67,17 +67,19 @@ void bipartition(int dim, int i0, int im, double *data, int *cluster_size, int *
         //if the data point dim value at var_idx is less than the mean variance, it goes on the left side, else it goes on the right
         if (data[cluster_assign[i]+var_idx] < mean_arr[var_idx]) {
             temp_assign[clust1st] = cluster_assign[i];
-            clust1bound = clust1st;
+            tempclust1bound = clust1st;
             clust1st++;
             clust1sizecnt++;
         }
         else {
             temp_assign[clust2st] = cluster_assign[i];
-            clust2bound = clust2st;
+            tempclust2bound = clust2st;
             clust2st--;
             clust2sizecnt++;
         }
     }
+    clust1bnd = clust1bnd + (clust1sizecnt - 1);
+    clust2bnd = clust2bnd - (clust2sizecnt - 1);
     
     //reassign cluster_assign
     for (i = loopstart, j = 0; i < loopend; i++, j++) {
@@ -87,7 +89,7 @@ void bipartition(int dim, int i0, int im, double *data, int *cluster_size, int *
     cluster_size[0] = clust1sizecnt;
     cluster_size[1] = clust2sizecnt;
     cluster_start[0] = i0;
-    cluster_start[1] = clust2bound;
+    cluster_start[1] = clust2bnd;
     
     //update cluster boundries
     for (j = 0; j < 2; j++) { //each cluster
@@ -122,9 +124,14 @@ void biparttracker(int dim, int ndata, int depth, int cluster, int i0, int im, d
     int  *this_cluster_size,  *this_cluster_start;
     double *this_cluster_boundry, *this_cluster_centroid;
     
-    if (depth >= LOG2(k)) {
+    if (depth > LOG2(k)) {
         //do nothing, reached max K
         return;
+    }
+    else if (depth == LOG2(k)) {
+        /*for (i = cluster_start[cluster]; i < cluster_start[cluster] + cluster_size[cluster]; i++) {
+            cluster_assign[i] = cluster;
+        }*/
     }
     else {
         //allocate memory for single cluster
@@ -145,8 +152,9 @@ void biparttracker(int dim, int ndata, int depth, int cluster, int i0, int im, d
         
         //assign the global cluster starts/sizes
         for (i = 0; i < 2; i++) {
-            if (depth == LOG2(k) - 1) {
+            if (depth == (LOG2(k) - 1)) {
                 //cluster*2+i is the index of the next children
+                printf("start %d size %d cluster %d\n", this_cluster_start[i], this_cluster_size[i], cluster*2+i);
                 cluster_size[cluster*2+i] = this_cluster_size[i];
                 cluster_start[cluster*2+i] = this_cluster_start[i];
             }
@@ -269,7 +277,7 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
 }
 
 void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
-    int i, j, avg_checks, assign_idx;
+    int i, j, l, avg_checks, assign_idx;
     int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
     double *data, **cluster_boundry, **cluster_centroid, *result;
@@ -320,6 +328,15 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     }
 
     write_results(dim, ndata, data, cluster_assign);
+
+    /*for (i = 0; i < k; i++) {
+        for (l = cluster_start[i]; l < cluster_start[i] + cluster_size[i]*dim; l+=dim) {
+            printf("%d)", i);
+            for (j = 0; j < dim; j++) {
+                printf("\t%d\t%f\n", cluster_assign[l/dim], data[l+j]);
+            }
+        }
+    }*/
 
     avg_checks = search_kdtree(dim, ndata, data, k, q, cluster_size, cluster_start, cluster_boundry, query, result);
     
