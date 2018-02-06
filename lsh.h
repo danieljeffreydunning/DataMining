@@ -29,6 +29,6 @@ void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *ha
 /**/
 int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int running_cnt, int *hash_assign); 
 
-int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals);
+int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals, int *hash_assign);
 
 void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query);

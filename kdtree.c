@@ -154,7 +154,6 @@ void biparttracker(int dim, int ndata, int depth, int cluster, int i0, int im, d
         for (i = 0; i < 2; i++) {
             if (depth == (LOG2(k) - 1)) {
                 //cluster*2+i is the index of the next children
-                printf("start %d size %d cluster %d\n", this_cluster_start[i], this_cluster_size[i], cluster*2+i);
                 cluster_size[cluster*2+i] = this_cluster_size[i];
                 cluster_start[cluster*2+i] = this_cluster_start[i];
             }
@@ -208,7 +207,7 @@ void kdtree(int dim, int ndata, double *data, int k, int *cluster_size, int *clu
 int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_size, int *cluster_start, double **cluster_bdry, double *query, double *result_pt) {
     
     int i, j, q, qidx, min_clust_idx, point_idx, point_check_cnt = 0, loopstart, loopend;
-    double min0, max0, calcdist, *clust_dist_arr, compare_dist = DBL_MAX, temp_dist = DBL_MAX;
+    double min0, max0, calcdist, *clust_dist_arr, cluster_dist = DBL_MAX, point_dist = DBL_MAX, temp_dist = DBL_MAX;
 
     clust_dist_arr = (double *)malloc(sizeof(double) * k);
     
@@ -218,8 +217,8 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             calcdist = pnt2bdry(dim, cluster_bdry, query, qidx, i);
             clust_dist_arr[i] = calcdist;
             
-            compare_dist = MIN(compare_dist, calcdist); //find smallest distance to a cluster
-            if (compare_dist == calcdist) {
+            cluster_dist = MIN(cluster_dist, calcdist); //find smallest distance to a cluster
+            if (cluster_dist == calcdist) {
                 //we need the index of this cluster
                 min_clust_idx = i;
             }
@@ -230,17 +229,15 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
         loopend = cluster_start[min_clust_idx] + cluster_size[min_clust_idx]*dim;
         
         //find closest point in the cluster we're in or closest to
-        //compare dist now changes its meaning from distance to cluster to distance to points
-        compare_dist = DBL_MAX;
         for (i = loopstart; i < loopend; i+=dim) {
             temp_dist = pnt2pntDistance(dim, qidx, query, i, data);
-            compare_dist = MIN(temp_dist, compare_dist);
-            if (compare_dist == temp_dist) {
+            point_dist = MIN(temp_dist, point_dist);
+            if (point_dist == temp_dist) {
                 point_idx = i;
             }
             point_check_cnt++; //checked a new point
         }
-        printf("closest point in cluster: %d with distance of %f\n", min_clust_idx, compare_dist);
+        printf("closest point in cluster: %d with distance of %f\n", min_clust_idx, point_dist);
         
         //check if any clusters are closer than the given point
         for (i = 0; i < k; i++) {
@@ -248,11 +245,11 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             else {
                 loopstart = cluster_start[i];
                 loopend = cluster_start[i] + cluster_size[i]*dim;
-                if (clust_dist_arr[i] < compare_dist) { //cluster is closer than closest point in current cluster
+                if (clust_dist_arr[i] < point_dist) { //cluster is closer than closest point in current cluster
                     for (j = loopstart; j < loopend; j+=dim) { //check all points in this cluster
                         temp_dist = pnt2pntDistance(dim, qidx, query, j, data);
-                        compare_dist = MIN(temp_dist, compare_dist);
-                        if (compare_dist == temp_dist) {
+                        point_dist = MIN(temp_dist, point_dist);
+                        if (point_dist == temp_dist) {
                             point_idx = i;
                             min_clust_idx = i;
                         }
@@ -263,11 +260,12 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             }
         }
         
-        printf("[new] closest point in cluster: %d with a distance of %f\n", min_clust_idx, compare_dist);
+        printf("[new] closest point in cluster: %d with a distance of %f\n", min_clust_idx, point_dist);
         for (i = 0; i < dim; i++) {
             result_pt[qidx+i] = data[point_idx+i];
         }
-        compare_dist = DBL_MAX;
+        cluster_dist = DBL_MAX;
+        point_dist = DBL_MAX;
         temp_dist = DBL_MAX;    
     }
     
@@ -280,7 +278,7 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     int i, j, l, avg_checks, assign_idx;
     int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
-    double *data, **cluster_boundry, **cluster_centroid, *result;
+    double *data, **cluster_boundry, **cluster_centroid, *result, *distance_arr;
     
     ft_data = (float *)malloc(sizeof(float) * ndata * dim);
     data = (double *)malloc(sizeof(double) * ndata * dim);
@@ -290,6 +288,7 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     cluster_boundry = (double **)malloc(sizeof(double *) * k);
     cluster_centroid = (double **)malloc(sizeof(double *) * k);   
     result = (double *)malloc(sizeof(double) * q * dim);
+    distance_arr = (double *)malloc(sizeof(double) * q * dim);
     
     //initialize 2d arrays
     for (i = 0; i < k; i++) {
@@ -314,9 +313,9 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     /*for (i = 0; i < k; i++) {
         printf("L%f R%f B%f T%f\n", cluster_boundry[i][0], cluster_boundry[i][1], cluster_boundry[i][2], cluster_boundry[i][3]);
     }*/
-    for (i = 0; i < k; i++) {
+    /*for (i = 0; i < k; i++) {
         printf("%d %d\n", cluster_start[i], cluster_size[i]);
-    }
+    }*/
     
     //give new values for cluster_assign for python visualization
     assign_idx = 0;
@@ -342,6 +341,12 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     
     printf("Average number of checks was %d\n", avg_checks);
     printf("\n");
+
+    for (i = 0; i < q*dim; i+=dim) {
+        distance_arr[i] = pnt2pntDistance(dim, i, query, i, result);
+        printf("%f\n", distance_arr[i]);
+    }
+    printf("\n");
     
     for (i = 0; i < k; i++) {
         free(cluster_boundry[i]);
@@ -355,6 +360,7 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     free(cluster_centroid);
     free(cluster_assign);
     free(result);
+    free(distance_arr);
 }
 
 
