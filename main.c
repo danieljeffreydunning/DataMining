@@ -8,7 +8,8 @@
 #include "kdtree.h"
 #include "kmeans.h"
 #include "lsh.h"
-//
+#include "brute_force.h"
+
 int parseArgs(int argc, char** argv, int *alg, int *ndata, int *dim, int *k, int *m, int *w, int *q) {
     int i;
     char this_alg[] = "-a", this_ndata[] = "-nd", this_dim[] = "-d", this_k[] = "-k", this_m[] = "-m", this_w[] = "-w", this_q[] = "-q";
@@ -46,8 +47,9 @@ int parseArgs(int argc, char** argv, int *alg, int *ndata, int *dim, int *k, int
 int main(int argc, char** argv) {
     int alg, q, ndata, dim, k, m, w, strsize, nitems, i;
     char *filepath;
-    double r;
+    double r, cpu_time_used;
     double *query;
+    clock_t start, end;
 
     strsize = strlen(argv[1]);
 
@@ -77,18 +79,35 @@ int main(int argc, char** argv) {
 
     //run the specified algorithm
     if (alg == 0) {
+        start = clock();
         runKDTree(filepath, ndata, dim, k, q, query);
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
     else if (alg == 1) {
+        start = clock();
         MPI_Init(&argc, &argv);
         runKMeans(filepath, ndata, dim, k, q, query);
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
     else if (alg == 2) {
+        start = clock();
         runLSH(filepath, ndata, dim, m, w, q, query);
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    }
+    else if (alg == 3) {
+        start = clock();
+        runBruteForce(filepath, ndata, dim, q, query);
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
     else {
         printf("That is not a valid algorithm. goodbye\n");
+        cpu_time_used = 0.0;
     }
+    printf("\n------------------\nThe time used by the algorithm was %f seconds\n------------------\n\n", cpu_time_used);
 
     free(filepath);
     free(query);

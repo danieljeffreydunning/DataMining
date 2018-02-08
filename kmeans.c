@@ -10,11 +10,12 @@
 #include "util/compFunctions.h"
 
 int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt, int world_size, int world_rank, int q) {
-	int i, j, l, min_clust_idx, min_point_idx, global_min_clust_idx, global_min_point_idx, count = 0, loopstart, loopend;
-	double cent_dist = DBL_MAX, point_dist = DBL_MAX, global_cent_dist, global_point_dist, temp_dist, rad_comp_dist;
-	double *cent_comp_arr;
+	int i, j, l, min_clust_idx, min_point_idx, global_min_clust_idx, global_min_point_idx, count = 0, loopstart, loopend, newlowflag = 0, oglow = 0;
+	double cent_dist = DBL_MAX, point_dist = DBL_MAX, global_cent_dist, global_point_dist, temp_dist, og_dist, rad_comp_dist;
+	double *cent_comp_arr, *global_cent_comp_arr;
 
 	cent_comp_arr = (double *)malloc(sizeof(double) * k);
+    global_cent_comp_arr = (double *)malloc(sizeof(double) * k);
 
 	for (j = 0; j < q * dim; j+=dim) { // for each query
 		//initialize comp arr
@@ -31,14 +32,12 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 			if (cent_dist == temp_dist) {
 				min_clust_idx = i;
 			}
-
 		}
+
 		//calculate distance to each point in the closest cluster and get the local minimum
         loopstart = cluster_start[min_clust_idx];
-        loopend = cluster_start[min_clust_idx]+cluster_size[min_clust_idx]*dim;
-
+        loopend = cluster_start[min_clust_idx] + cluster_size[min_clust_idx]*dim;
 		for (l = loopstart; l < loopend; l+=dim) {
-			//temp_dist = distance(dim, j, query, l, data);
             temp_dist = pnt2pntDistance(dim, j, query, l, data);
 			count++;
 			point_dist = MIN(point_dist, temp_dist);
@@ -46,9 +45,14 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 				min_point_idx = l;
 			}	
 		}
+
         //all procs need to have the same minimum distance to a point in the cluster
         MPI_Allreduce(&point_dist, &global_point_dist, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+        if (point_dist == global_point_dist) {
+            oglow = 1;
+        }
         point_dist = global_point_dist;
+        og_dist = point_dist;
 
 		//check if any cluster radius is closer than the min distance. If so, check points in that cluster
 		for (i = 0; i < k; i++) {
@@ -71,19 +75,55 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 			}
 		}
 
+        //if we got a new lowest, we are the new owners of the lowest
+        if (point_dist < og_dist) {
+            newlowflag = 1;
+        }
+
         //all procs need to have the same minimum distance to a point in the cluster
         MPI_Allreduce(&point_dist, &global_point_dist, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-        //if we had the shortest distance, we will add our result to the result array
-        if (point_dist == global_point_dist) {
-		    for (i = 0; i < dim; i++) {
-		    	result_pt[j+i] = data[min_point_idx+i];
-	    	}
+        //if there was a change from the original smallest
+        if (og_dist != global_point_dist) {
+            //if we had the shortest distance, we will add our result to the result array and send it to proc 0
+            if ((newlowflag == 1) && (point_dist == global_point_dist)) { 
+		        for (i = 0; i < dim; i++) {
+		            result_pt[j+i] = data[min_point_idx+i];
+	    	    }
+                //send it to 0 if we are not 0
+                if (world_rank != 0) {
+                    MPI_Send(&result_pt[j], dim, MPI_DOUBLE, 0, 23, MPI_COMM_WORLD);
+                }
+            }
+            else { //we are not owners of the shortest distance
+                if (world_rank == 0) {
+                    MPI_Recv(&result_pt[j], dim, MPI_DOUBLE, MPI_ANY_SOURCE, 23, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
         }
-        
+        //if there was no change
+        else {
+            if (oglow == 1) {
+                for (i = 0; i < dim; i++) {
+                    result_pt[j+i] = data[min_point_idx+i];
+                }
+                //send it to 0 if we are not 0
+                if (world_rank != 0) {
+                    MPI_Send(&result_pt[j], dim, MPI_DOUBLE, 0, 23, MPI_COMM_WORLD);
+                }
+            }
+            else { //we are not owners of the shortest distance
+                if (world_rank == 0) {
+                    MPI_Recv(&result_pt[j], dim, MPI_DOUBLE, MPI_ANY_SOURCE, 23, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+        }
+        oglow = 0;
+        newlowflag = 0;
         point_dist = DBL_MAX;
         cent_dist = DBL_MAX;
 	}
 
+    free(global_cent_comp_arr);
     free(cent_comp_arr);
 
 	return count;
@@ -237,13 +277,8 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
     }
 
 	for (i = 0; i < k; i++) {
-		loopstart = cluster_start[i]*dim;
-		if (i == k - 1) {
-			loopend =  ndata*dim;
-		}
-		else {
-			loopend = cluster_start[i+1]*dim;
-		}
+		loopstart = cluster_start[i];
+		loopend = cluster_start[i] + cluster_size[i]*dim;
 		for (j = loopstart; j < loopend; j+=dim) {
 			//get distance to each point in each cluster and remember the largest
 			//temp_max = calculateClusterDistance(dim, j, data, i, cluster_centroid);
@@ -288,13 +323,8 @@ void calculateCentroids(int dim, int ndata, double *data, int k, int *cluster_si
 	MPI_Allreduce(&cluster_size[0], &temp_clust_size[0], k, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
 	
 	for (i = 0; i < k; i++) {
-		loopstart = cluster_start[i]*dim;
-		if (i == k - 1) {
-			loopend = ndata*dim;
-		}
-		else {
-			loopend = cluster_start[i+1]*dim;
-		}
+		loopstart = cluster_start[i];
+		loopend = cluster_start[i] + cluster_size[i]*dim;
 		//for each centroid, getting the sum of all points, each of their dimensions, in temp_centroid
 		for (j = loopstart; j < loopend; j+=dim) {
 			for (l = 0; l < dim; l++) {	
@@ -380,7 +410,7 @@ void assignData(int dim, int ndata, double *data, int k, int *cluster_size, int 
 	//get cluster_starts from sizes
 	for (l = 0; l < k; l++) {
 		cluster_start[l] = clust_size_idx_cnt;
-		clust_size_idx_cnt += cluster_size[l];
+		clust_size_idx_cnt += cluster_size[l]*dim;
 	}
 
 	free(temp_clust_size);
@@ -450,14 +480,14 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
 	int kcheck = 1, rint, cycles, pointcnt, strsize, i, j, world_size, world_rank, proc_chunk_size, data_remainder;
 	int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
-	double *proc_data, **cluster_centroid, *cluster_radius, *result;
+	double *proc_data, **cluster_centroid, *cluster_radius, *result, *distance_arr;
     
 	cluster_size = (int *)malloc(sizeof(int) * k);
 	cluster_start = (int *)malloc(sizeof(int) * k);
 	cluster_centroid = (double **)malloc(sizeof(double *) * k);
 	cluster_radius = (double *)malloc(sizeof(double) * k);
-
 	result = (double *)malloc(sizeof(double) * q * dim);
+    distance_arr = (double *)malloc(sizeof(double) * q);
 
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -488,15 +518,6 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
     for (i = 0; i < proc_chunk_size * dim; i++) {
         proc_data[i] = (double) ft_data[i];
     }
-
-	printf("\n"); //the first 1
-	for (i = 0; i < dim; i+=dim) {
-		printf("%d) ", proc_chunk_size*world_rank+i/dim);
-		for (j = 0; j < 10; j++) {
-			printf("%f,", proc_data[i+j]);
-		}
-		printf("\n\n");
-	}
 
 	if (world_rank == 0) {
 		//initialize centroids
@@ -533,7 +554,16 @@ if (world_rank == 0) {
 
 	printf("number of points checked %d\n\n", pointcnt);
 
+    if (world_rank == 0) {
+        for (i = 0; i < q*dim; i+=dim) {
+            distance_arr[i/dim] = pnt2pntDistance(dim, i, query, i, result);
+            printf("%f\n", distance_arr[i/dim]);
+        }
+        printf("\n");
+    }
+
     free(ft_data);
+    free(distance_arr);
 	free(result);
 	free(cluster_radius);
 	free(cluster_centroid);
