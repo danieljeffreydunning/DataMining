@@ -49,7 +49,7 @@ void bipartition(int dim, int i0, int im, double *data, int *cluster_size, int *
         
         //calculate dim variances
         for (j = loopstart; j < loopend; j++) {
-            var_arr[i] += pow(data[cluster_assign[j]+i] - mean_arr[i], 2);
+            var_arr[i] += (pow(data[cluster_assign[j]+i] - mean_arr[i], 2)) / temp_cluster_size;
         }
     }
     
@@ -64,7 +64,7 @@ void bipartition(int dim, int i0, int im, double *data, int *cluster_size, int *
     //partition into each side of temp_assign based on the mean
     //cluster assign holds the values of the original data indexes for those points. used for rearranging at the end
     for (i = loopstart; i < loopend; i++) {
-        //if the data point dim value at var_idx is less than the mean variance, it goes on the left side, else it goes on the right
+        //if the data point dim value at var_idx is less than the mean variance, it goes on the left side, else it goes on the right (or top/bottom)
         if (data[cluster_assign[i]+var_idx] < mean_arr[var_idx]) {
             temp_assign[clust1st] = cluster_assign[i];
             tempclust1bound = clust1st;
@@ -177,22 +177,66 @@ void biparttracker(int dim, int ndata, int depth, int cluster, int i0, int im, d
 
 void kdtree(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_bdry, double **cluster_centroid, int *cluster_assign) {
     
-    double *temp_data;
-    int i, j, a, b;
+    int i, j, a, b, data_idx = 0, assign_idx = 0, size_cnt = 0;
+    int *temp_assign;
+    double *temp_data, *temp_boundry;
     
     biparttracker(dim, ndata, 0, 0, 0, ndata-1, data, k, cluster_size, cluster_start, cluster_bdry, cluster_centroid, cluster_assign);
     //store data in temp data so we can rearrange data
     temp_data = (double *)malloc(sizeof(double) * ndata * dim);
-    for (i = 0; i < ndata * dim; i++) {
-        temp_data[i] = data[i];
+    temp_assign = (int *)malloc(sizeof(int) * ndata);
+    temp_boundry = (double *)malloc(sizeof(double) * 2 * dim);
+    
+    for (i = 0; i < 2 * dim; i+=2) {
+        temp_boundry[i] = DBL_MAX;
+        temp_boundry[i+1] = -1 * DBL_MAX;
     }
-   
+
+    for (i = 0; i < k; i++) {
+        for (j = cluster_start[i]; j < cluster_start[i] + cluster_size[i]; j++) {
+            temp_assign[cluster_assign[j] / dim] = i;
+        }
+    }
+  
+    /*for (i = 0; i < 100; i++) {
+        printf("%d -> %d\n", cluster_assign[i], temp_assign[i]);
+    }*/
+
     //rearrange data 
-    for (i = 0; i < ndata * dim; i+=dim) {
+    /*for (i = 0; i < ndata * dim; i+=dim) {
         a = cluster_assign[i/dim];
         for (j = 0; j < dim; j++) {
             data[i+j] = temp_data[a+j];
         }
+    }*/
+
+    //rearrange data, cluster assign, and boundries
+    for (i = 0; i < k; i++) {
+        for (j = 0; j < ndata; j++) {
+            if (temp_assign[j] == i) {
+                size_cnt++;
+                for (a = 0; a < dim; a++) {
+                    temp_data[data_idx+a] = data[j*dim+a];
+                    temp_boundry[a*2] = MIN(temp_boundry[a*2], temp_data[data_idx+a]);
+                    temp_boundry[a*2+1] = MAX(temp_boundry[a*2+1], temp_data[data_idx+a]);
+                }
+                cluster_assign[assign_idx] = temp_assign[j];
+                assign_idx++;
+                data_idx+=dim;
+            }
+        }
+        for (j = 0; j < 2 * dim; j+=2) {
+            cluster_bdry[i][j] = temp_boundry[j];
+            temp_boundry[j] = DBL_MAX;
+            cluster_bdry[i][j+1] = temp_boundry[j+1];
+            temp_boundry[j+1] = -1 * DBL_MAX;
+        }
+        cluster_size[i] = size_cnt;
+        size_cnt = 0;
+    }
+   
+    for (i = 0; i < ndata * dim; i++) {
+        data[i] = temp_data[i];
     }
 
     //after kdtree is complete, need to make cluster start for data array, not cluster assign
@@ -201,13 +245,15 @@ void kdtree(int dim, int ndata, double *data, int k, int *cluster_size, int *clu
         j += cluster_size[i] * dim;
     }
     
+    free(temp_boundry);
+    free(temp_assign);
     free(temp_data);
 }
 
 int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_size, int *cluster_start, double **cluster_bdry, double *query, double *result_pt) {
     
-    int i, j, q, qidx, min_clust_idx, point_idx, point_check_cnt = 0, loopstart, loopend;
-    double min0, max0, calcdist, *clust_dist_arr, cluster_dist = DBL_MAX, point_dist = DBL_MAX, temp_dist = DBL_MAX;
+    int i, j, q, qidx, min_clust_idx, point_idx, point_check_cnt = 0, loopstart, loopend, j_idx;
+    double min0, max0, calcdist, *clust_dist_arr, cluster_dist = DBL_MAX, point_dist = DBL_MAX, temp_dist;// = DBL_MAX;
 
     clust_dist_arr = (double *)malloc(sizeof(double) * k);
     
@@ -233,11 +279,16 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             temp_dist = pnt2pntDistance(dim, qidx, query, i, data);
             point_dist = MIN(temp_dist, point_dist);
             if (point_dist == temp_dist) {
+                j_idx = i;
                 point_idx = i;
             }
             point_check_cnt++; //checked a new point
         }
         printf("closest point in cluster: %d with distance of %f\n", min_clust_idx, point_dist);
+
+        for (i = 0; i < k; i++) {
+            printf("%f\n", clust_dist_arr[i]);
+        }
         
         //check if any clusters are closer than the given point
         for (i = 0; i < k; i++) {
@@ -250,6 +301,7 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
                         temp_dist = pnt2pntDistance(dim, qidx, query, j, data);
                         point_dist = MIN(temp_dist, point_dist);
                         if (point_dist == temp_dist) {
+                            j_idx = j;
                             point_idx = i;
                             min_clust_idx = i;
                         }
@@ -260,13 +312,14 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             }
         }
         
-        printf("[new] closest point in cluster: %d with a distance of %f\n", min_clust_idx, point_dist);
         for (i = 0; i < dim; i++) {
-            result_pt[qidx+i] = data[point_idx+i];
+            result_pt[qidx+i] = data[j_idx+i];
         }
+
+        printf("[new] closest point in cluster: %d with a distance of %f\n", min_clust_idx, point_dist);
         cluster_dist = DBL_MAX;
         point_dist = DBL_MAX;
-        temp_dist = DBL_MAX;    
+        //temp_dist = DBL_MAX;    
     }
     
     free(clust_dist_arr);
@@ -318,16 +371,6 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     }*/
     
     //give new values for cluster_assign for python visualization
-    assign_idx = 0;
-    for (i = 0; i < k; i++) {
-        for (j = 0; j < cluster_size[i]; j++) {
-            cluster_assign[assign_idx] = i;
-            assign_idx++;
-        }
-    }
-
-    write_results(dim, ndata, data, cluster_assign);
-
     /*for (i = 0; i < k; i++) {
         for (l = cluster_start[i]; l < cluster_start[i] + cluster_size[i]*dim; l+=dim) {
             printf("%d)", i);
@@ -339,6 +382,8 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
 
     avg_checks = search_kdtree(dim, ndata, data, k, q, cluster_size, cluster_start, cluster_boundry, query, result);
     
+    write_results(dim, ndata, data, cluster_assign);
+
     printf("Average number of checks was %d\n", avg_checks);
     printf("\n");
 

@@ -61,10 +61,12 @@ int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, in
 }
 
 void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim) {
-	int i, j, k, temp_idx = 0;
+	int i, j, k, temp_idx = 0, assign_idx = 0;
+    int *temp_assign;
 	double *temp_data;
 
 	temp_data = (double *)malloc(sizeof(double) * ndata * dim);
+    temp_assign = (int *)malloc(sizeof(int) * ndata);
 
 	for (i = 0; i < running_cnt; i++) { //for each hash value
 		for (j = 0; j < ndata; j++) { //for each data point
@@ -72,6 +74,8 @@ void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *ha
 				for (k = 0; k < dim; k++) { // each dimmension
 					temp_data[temp_idx+k] = data[j*dim+k];
 				}
+                temp_assign[assign_idx] = hash_assign[j];
+                assign_idx++;
                 temp_idx+=dim;
 			}
 		}
@@ -80,7 +84,11 @@ void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *ha
 	for (i = 0; i < ndata * dim; i++) {
 		data[i] = temp_data[i];
 	} 
+    for (i = 0; i < ndata; i++) {
+        hash_assign[i] = temp_assign[i];
+    }
 
+    free(temp_assign);
 	free(temp_data);
 }
 
@@ -142,7 +150,7 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 	for (i = 0; i < ndata*dim; i+=dim) { //for each data point
 		for (j = 0; j < m; j++) { //for each m value
 
-			h_i = (fabs(dotprod(dim, data, r, i, j) - b[j])) / w; //because int division, we get the floor
+			h_i = (int) (fabs(dotprod(dim, data, r, i, j) - b[j])) / w; //because int division, we get the floor
 			H[hash_x_idx][hash_y_idx] = h_i;
 			hash_y_idx++;
 		}
@@ -237,11 +245,11 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
 
     write_results(dim, ndata, data, hash_assign);
 	
-    printf("Cluster Sizes:\n");
+    /*printf("Cluster Sizes:\n");
     for (i = 0; i < num_clusters; i++) {
         printf("%d\n", cluster_size[i]);
     }
-    printf("\n");
+    printf("\n");*/
 
     /*for (i = 0; i < num_clusters*m; i+=m) {
         printf("%d) ", i/m);
@@ -251,6 +259,18 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
         printf("\n");
     }
     printf("\n");*/
+
+    /*for (i = 0; i < 100 * m; i+=m) {
+        printf("%d) <%d> ", i/m, hash_assign[i/m]);
+        for (j = 0; j < m; j++) {
+            printf("%d-", H[i/m][j]);
+        }
+        printf("\n");
+    }*/
+
+    /*for (i = 0; i < 100 * dim; i+=dim) {
+        printf("%f %f %d %d\n", data[i], data[i + 1], H[i/dim][0], H[i/dim][1]);
+    }*/
 
 	//get hash values for the queries
 	for (qi = 0; qi < q*dim; qi+=dim) {
