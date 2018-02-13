@@ -549,7 +549,11 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
 if (world_rank == 0) {
 
 	printf("\ncycles %d\n", cycles);
+
+    //will only work properly currently with 1 proc execution
+    write_results(dim, ndata, proc_data, cluster_assign);
 }
+
 	pointcnt = search_kmeans(dim, ndata, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, query, result, world_size, world_rank, q);
 
 	printf("number of points checked %d\n\n", pointcnt);
