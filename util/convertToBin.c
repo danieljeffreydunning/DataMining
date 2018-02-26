@@ -3,8 +3,6 @@
 #include <string.h>
 #include "dataFunctions.h"
 
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-
 int main(int argc, char** argv) {
     int strsize1, strsize2, dim, ndata, i;
     char *pathfrom, *pathto;

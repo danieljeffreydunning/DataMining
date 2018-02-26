@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     int alg, q, ndata, dim, k, m, w, strsize, nitems, i;
     char *filepath;
     double r, cpu_time_used;
-    double *query;
+    double *query, *result;
     clock_t start, end;
 
     strsize = strlen(argv[1]);
@@ -69,6 +69,7 @@ int main(int argc, char** argv) {
     }
 
     query = (double *)malloc(sizeof(double) * dim * q); 
+    result = (double *)malloc(sizeof(double) * dim * q); 
 
     //initialize random query points
     srand(23);
@@ -80,26 +81,26 @@ int main(int argc, char** argv) {
     //run the specified algorithm
     if (alg == 0) {
         start = clock();
-        runKDTree(filepath, ndata, dim, k, q, query);
+        runKDTree(filepath, ndata, dim, k, q, query, result);
         end = clock();
         cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
     else if (alg == 1) {
         start = clock();
         MPI_Init(&argc, &argv);
-        runKMeans(filepath, ndata, dim, k, q, query);
+        runKMeans(filepath, ndata, dim, k, q, query, result);
         end = clock();
         cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
     else if (alg == 2) {
         start = clock();
-        runLSH(filepath, ndata, dim, m, w, q, query);
+        runLSH(filepath, ndata, dim, m, w, q, query, result);
         end = clock();
         cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
     else if (alg == 3) {
         start = clock();
-        runBruteForce(filepath, ndata, dim, q, query);
+        runBruteForce(filepath, ndata, dim, q, query, result);
         end = clock();
         cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     }
@@ -107,10 +108,11 @@ int main(int argc, char** argv) {
         printf("That is not a valid algorithm. goodbye\n");
         cpu_time_used = 0.0;
     }
-    printf("\n------------------\nThe time used by the algorithm was %f seconds\n------------------\n\n", cpu_time_used);
+    printf("\n------------------\nThe total time used by the algorithm was %f seconds\n------------------\n\n", cpu_time_used);
 
     free(filepath);
     free(query);
+    //free(result);
 
     return 0;
 }

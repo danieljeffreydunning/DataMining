@@ -284,11 +284,11 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             }
             point_check_cnt++; //checked a new point
         }
-        printf("closest point in cluster: %d with distance of %f\n", min_clust_idx, point_dist);
+        //printf("closest point in cluster: %d with distance of %f\n", min_clust_idx, point_dist);
 
-        for (i = 0; i < k; i++) {
+        /*for (i = 0; i < k; i++) {
             printf("%f\n", clust_dist_arr[i]);
-        }
+        }*/
         
         //check if any clusters are closer than the given point
         for (i = 0; i < k; i++) {
@@ -316,7 +316,7 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
             result_pt[qidx+i] = data[j_idx+i];
         }
 
-        printf("[new] closest point in cluster: %d with a distance of %f\n", min_clust_idx, point_dist);
+        //printf("[new] closest point in cluster: %d with a distance of %f\n", min_clust_idx, point_dist);
         cluster_dist = DBL_MAX;
         point_dist = DBL_MAX;
         //temp_dist = DBL_MAX;    
@@ -327,11 +327,13 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
     return point_check_cnt / q0;
 }
 
-void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
+void runKDTree(char *path, int ndata, int dim, int k, int q, double *query, double *result) {
     int i, j, l, avg_checks, assign_idx;
     int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
-    double *data, **cluster_boundry, **cluster_centroid, *result, *distance_arr;
+    double cluster_time_used, search_time_used;
+    double *data, **cluster_boundry, **cluster_centroid, *distance_arr;
+    clock_t startC, endC, startS, endS;
     
     ft_data = (float *)malloc(sizeof(float) * ndata * dim);
     data = (double *)malloc(sizeof(double) * ndata * dim);
@@ -340,7 +342,6 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
     cluster_start = (int *)malloc(sizeof(int) * k);
     cluster_boundry = (double **)malloc(sizeof(double *) * k);
     cluster_centroid = (double **)malloc(sizeof(double *) * k);   
-    result = (double *)malloc(sizeof(double) * q * dim);
     distance_arr = (double *)malloc(sizeof(double) * q * dim);
     
     //initialize 2d arrays
@@ -361,7 +362,10 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
         cluster_assign[i] = i * dim;
     }
     
+    startC = clock();
     kdtree(dim, ndata, data, k, cluster_size, cluster_start, cluster_boundry, cluster_centroid, cluster_assign);
+    endC = clock();
+    cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
 
     /*for (i = 0; i < k; i++) {
         printf("L%f R%f B%f T%f\n", cluster_boundry[i][0], cluster_boundry[i][1], cluster_boundry[i][2], cluster_boundry[i][3]);
@@ -380,18 +384,22 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query) {
         }
     }*/
 
+    startS = clock();
     avg_checks = search_kdtree(dim, ndata, data, k, q, cluster_size, cluster_start, cluster_boundry, query, result);
+    endS = clock();
+    search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+
+    //write_results(dim, ndata, data, cluster_assign);
+
+    //printf("Average number of checks was %d\n", avg_checks);
+    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
+    printf("\n------------------\nThe Searching time used by the algorithm was %f seconds\n------------------\n\n", search_time_used);
     
-    write_results(dim, ndata, data, cluster_assign);
-
-    printf("Average number of checks was %d\n", avg_checks);
-    printf("\n");
-
     for (i = 0; i < q*dim; i+=dim) {
         distance_arr[i] = pnt2pntDistance(dim, i, query, i, result);
         printf("%f\n", distance_arr[i]);
     }
-    printf("\n");
+    //printf("\n");
     
     for (i = 0; i < k; i++) {
         free(cluster_boundry[i]);

@@ -19,7 +19,7 @@
  *@param query: array of query points. Size Q * dim
  *@param result: array of the closest point to each respective query. Size Q * dim
  */
-int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result);
+int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result, double **cluster_bdry, double *cluster_radius, double **cluster_centroid);
 
 /**
  *temp_has: array set to the same as hash_vals. Will be used to do the reordering of values and then copied back into hash_vals. Size m * ndata
@@ -31,4 +31,4 @@ int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int runn
 
 int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals, int *hash_assign);
 
-void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query);
+void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, double *result);
