@@ -12,6 +12,11 @@
  *@param result_pt: array holding the closest point to each corresponding query point. Size Q * dim
 */
 
-int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, int *cluster_assign);
+void calculateInitCentroids(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int clust1, int clust2);
 
-int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double *cluster_radius, double **cluster_centroid, double *query, double *result_pt);
+int assignInitData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int clust1, int clust2);
+
+int bkInitCentroids(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, double **cluster_centroid, int place_idx, int cent_idx, int cent_count, int *cluster_assign);
+
+void runBKmeans(int dim, int k, int ndata, double *data, double **cluster_centroid);
+

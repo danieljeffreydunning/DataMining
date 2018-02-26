@@ -6,6 +6,7 @@
 #include <string.h>
 #include <float.h>
 #include "kmeans.h"
+#include "bisecting_kmeans.h"
 #include "util/dataFunctions.h"
 #include "util/compFunctions.h"
 
@@ -177,19 +178,23 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
     //if we have no empty clusters we can calculate the new centroids
 	calculateCentroids(dim, ndata, data, k, cluster_size, cluster_start, cluster_centroid, cluster_assign, world_size, world_rank);
 
-    if (world_rank == 0) 
-        printf("Adjusting centroids\n...\n");
+    //if (world_rank == 0) 
+        //printf("Adjusting centroids\n...\n");
 
     //do the process until none of the data points change cluster (has a hardcoded limit of 50, can be modified or removed)
-	while ((!doneflag) && (stallflag < 50)) {
+	while (!doneflag) {
+
+        /*if (world_rank == 0) {
+            printf("%d\n", cycle_cnt);
+        } */
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
-		if (stallflag % 10 == 0) { //check for back and forthness
+		/*if (stallflag % 10 == 0) { //check for back and forthness
 			for (i = 0; i < ndata; i++) {
 				cycle_check_assign[i] = cluster_assign[i];
 			}
-		}
+		}*/
 
 		//initialize array for comparison
 		for (i = 0; i < ndata; i++) {
@@ -264,17 +269,17 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
 
 		diff = 0;
 		proc_diff = 0;
-		stallflag++;
+		//stallflag++;
 		cycle_cnt++;
 	}
 
-    if (world_rank == 0) { //printf global cluster sizes
+    /*if (world_rank == 0) { //printf global cluster sizes
         printf("\nCluster sizes: ");
         for (i = 0; i < k; i++) {
             printf("%d ", temp_clust_size[i]);
         }
         printf("\n");
-    }
+    }*/
 
 	for (i = 0; i < k; i++) {
 		loopstart = cluster_start[i];
@@ -476,17 +481,18 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 	}
 }
 
-void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
+void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, double *result) {
 	int kcheck = 1, rint, cycles, pointcnt, strsize, i, j, world_size, world_rank, proc_chunk_size, data_remainder;
 	int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
-	double *proc_data, **cluster_centroid, *cluster_radius, *result, *distance_arr;
+    double cluster_time_used, search_time_used;
+	double *proc_data, **cluster_centroid, *cluster_radius, *distance_arr;
+    clock_t startC, endC, startS, endS;
     
 	cluster_size = (int *)malloc(sizeof(int) * k);
 	cluster_start = (int *)malloc(sizeof(int) * k);
 	cluster_centroid = (double **)malloc(sizeof(double *) * k);
 	cluster_radius = (double *)malloc(sizeof(double) * k);
-	result = (double *)malloc(sizeof(double) * q * dim);
     distance_arr = (double *)malloc(sizeof(double) * q);
 
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -527,7 +533,7 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
 		}
 	
 		MPI_Bcast(&cluster_centroid[0][0], dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        printf("Now initializing centroids\n...\n");
+        //printf("Now initializing centroids\n...\n");
 	}
 
 	else { // not root
@@ -537,34 +543,50 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query) {
     //before while loops good to make sure everyone is on the same page
 	MPI_Barrier(MPI_COMM_WORLD);
 
+    startC = clock();
 	while (kcheck < k) {
         //printf("%d kcheck %d\n", world_rank, kcheck);
 		initializeCentroids(dim, proc_chunk_size, proc_data, k, cluster_centroid, kcheck, kcheck, world_rank, world_size);
 		kcheck++;
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
+    for (i = 0; i < k; i++) {
+        for (j = 0; j < dim; j++) {
+            printf("%f, ", cluster_centroid[i][j]);
+        }
+        printf("\n");
+    }
+
+    //runBKmeans(dim, k, ndata, proc_data, cluster_centroid);
 
 	cycles = kmeans(dim, proc_chunk_size, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, cluster_assign, world_size, world_rank);
+    endC = clock();
+    cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
+//if (world_rank == 0) {
 
-if (world_rank == 0) {
-
-	printf("\ncycles %d\n", cycles);
+	//printf("\ncycles %d\n", cycles);
 
     //will only work properly currently with 1 proc execution
-    write_results(dim, ndata, proc_data, cluster_assign);
-}
+    //write_results(dim, ndata, proc_data, cluster_assign);
+//}
 
+    startS = clock();
 	pointcnt = search_kmeans(dim, ndata, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, query, result, world_size, world_rank, q);
+    endS = clock();
+    search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
 
-	printf("number of points checked %d\n\n", pointcnt);
+	//printf("number of points checked %d\n\n", pointcnt);
 
     if (world_rank == 0) {
         for (i = 0; i < q*dim; i+=dim) {
             distance_arr[i/dim] = pnt2pntDistance(dim, i, query, i, result);
             printf("%f\n", distance_arr[i/dim]);
         }
-        printf("\n");
+        //printf("\n");
     }
+
+    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
+    printf("\n------------------\nThe Searching time used by the algorithm was %f seconds\n------------------\n\n", search_time_used);
 
     free(ft_data);
     free(distance_arr);

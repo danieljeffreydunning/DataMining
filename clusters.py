@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
-with open('pyclustdata.txt', 'r') as infile:
+with open('../data/pyclustdata.txt', 'r') as infile:
 	dim = int(infile.readline().strip())
 	ndata = int(infile.readline().strip())
 	data = []

@@ -28,4 +28,4 @@ int search_kmeans(int dim, int ndata, double *data, int k, int *cluster_size, in
 void initializeCentroids(int dim, int ndata, double *data, int k, double **cluster_centroid, int place_idx, int m, int world_rank, int world_size);
 
 
-void runKMeans(char *path, int ndata, int dim, int k, int q, double *query);
+void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, double *result);

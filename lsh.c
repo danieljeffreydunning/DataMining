@@ -7,9 +7,12 @@
 #include "util/dataFunctions.h"
 #include "util/compFunctions.h"
 
-int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result) {
+int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result, double **cluster_bdry, double *cluster_radius, double **cluster_centroid) {
 	int q, qhash, i, j, l, min_clust_idx = -1, min_point_idx, loopstart, loopend, count = 0;
-	double min_distance = DBL_MAX, current_distance = 0.0, sum;
+	double min_distance = DBL_MAX, current_distance = 0.0, sum, dist2bound, dist2rad;
+    double *clust_dist_arr;
+
+    clust_dist_arr = (double *)malloc(sizeof(double) * running_cnt);
 
 	for (q = 0, qhash = 0; q < q0*dim; q+=dim, qhash+=m) {
 		for (i = 0; i < m*running_cnt; i+=m) {
@@ -35,10 +38,9 @@ int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, in
         loopend = cluster_start[min_clust_idx]+cluster_size[min_clust_idx]*dim;
 
 		if (min_clust_idx == -1) { //did not match a cluster hash
-			for (i = 0; i < dim; i++) {
+			/*for (i = 0; i < dim; i++) {
 				result[q+i] = -1.0;
-			}
-            return 0;
+			}*/
 		}
 		else { //search in matched cluster
 			//calculate distance to each point in the closest cluster
@@ -50,14 +52,80 @@ int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, in
 				}
                 count++;    
 			}
-			for (i = 0; i < dim; i++) {
+			/*for (i = 0; i < dim; i++) {
 				result[q+i] = data[min_point_idx+i];
-			}
+			}*/
 		}
+        
+        //now we must check other clusters to see if they are closer than our closest point
+        for (i = 0; i < running_cnt; i++) {
+            dist2bound = pnt2bdry(dim, cluster_bdry, query, q, i);
+            dist2rad = pnt2centDistance(dim, i, q, query, cluster_centroid) - cluster_radius[i];
+            clust_dist_arr[i] = MAX(dist2bound, dist2rad);
+        }
+        for (i = 0; i < running_cnt; i++) {
+            if (i == min_clust_idx) {}//already checked this cluster
+            else {
+                loopstart = cluster_start[i];
+                loopend = cluster_start[i] + cluster_size[i]*dim;
+                if (clust_dist_arr[i] < min_distance) { //cluster is closer than closest point in current cluster
+                    for (j = loopstart; j < loopend; j+=dim) { //check all points in this cluster
+                        current_distance = pnt2pntDistance(dim, q, query, j, data);
+                        min_distance = MIN(min_distance, current_distance);
+                        if (min_distance == current_distance) {
+                            min_point_idx = j;
+                        }
+                        count++;
+                    }
+                    
+                }
+            }
+        }
+
+        for (i = 0; i < dim; i++) {
+            result[q+i] = data[min_point_idx+i];
+        }
+
+        //Resest distance and cluster index
         min_distance = DBL_MAX;
 		min_clust_idx = -1;
 	}
+    free(clust_dist_arr);
+
     return count;
+}
+
+void getBoundries(int dim, int ndata, double *data, int num_clusters, int *cluster_size, int *cluster_start, double **cluster_bdry, double **cluster_centroid, double *cluster_radius) {
+    int i, j, k, loopstart, loopend;
+    double temp_min = DBL_MAX, temp_max = 0.0, temp_sum = 0.0;
+
+    for (i = 0; i < num_clusters; i++) {
+        loopstart = cluster_start[i];
+        loopend = cluster_start[i] + cluster_size[i]*dim;
+        //get cluster boundry values and centroid values
+        for (j = 0; j < dim; j++) { // each dim
+            for (k = loopstart + j; k < loopend; k+=dim) { // each data point
+                temp_sum += data[k];
+                temp_min = MIN(temp_min, data[k]);
+                temp_max = MAX(temp_max, data[k]);
+            }
+            //assign values in respective arrays
+            cluster_centroid[i][j] = temp_sum / cluster_size[i];
+            cluster_bdry[i][j*2] = temp_min;
+            cluster_bdry[i][j*2+1] = temp_max;
+            //reset counting/comparison values
+            temp_sum = 0; 
+            temp_min = DBL_MAX;
+            temp_max = 0.0;
+        }
+        temp_max = 0.0;
+        //get cluster_radius values
+        for (j = loopstart; j < loopend; j++) {
+            temp_max = MAX(temp_max, pnt2centDistance(dim, i, j, data, cluster_centroid));
+        }
+        cluster_radius[i] = temp_max;
+        temp_max = 0.0;
+    }
 }
 
 void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim) {
@@ -184,13 +252,14 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 	return running_cnt;
 }
 
-void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) {
+void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, double *result) {
 	
 	int qi, i, j, num_clusters = 0, sum = 0, temp_hash_sum = 0, q_idx = 0, count;
 	int *cluster_size, *cluster_start, **H, *hash_vals, *query_hash, *hash_assign;
     float *ft_data;
-    double rnum;
-	double *data, **r, *b, *result, *distance_arr;
+    double rnum, cluster_time_used, search_time_used;
+	double *data, **r, *b, *distance_arr, **cluster_bdry, **cluster_centroid, *cluster_radius;
+    clock_t startC, endC, startS, endS;
 
     ft_data = (float *)malloc(sizeof(float) * ndata * dim);
 	data = (double *)malloc(sizeof(double) * ndata * dim);
@@ -200,7 +269,6 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
 	hash_vals = (int *)malloc(sizeof(int) * m * ndata);
 	query_hash = (int *)malloc(sizeof(int) * m * q);
     hash_assign = (int *)malloc(sizeof(int) * ndata);
-	result = (double *)malloc(sizeof(double) * q * dim);
     distance_arr = (double *)malloc(sizeof(double) * q);
 	H = (int **)malloc(sizeof(int *) * ndata);
 	r = (double **)malloc(sizeof(double *) * m);
@@ -239,11 +307,35 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
 		b[i] = ((double)rand() / (double)(RAND_MAX)) * 5.0;;
 	}
 
+    printf("\nStarting LSH algorithm\n");
+    startC = clock();
 	num_clusters = LSH(dim, ndata, data, m, r, b, w, num_clusters, cluster_size, cluster_start, H, hash_vals, hash_assign);
+    endC = clock();
+    cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
 
-	printf("\nThe number of clusters is %d\n", num_clusters);
+    //after the number of clusters is known we can allocate space for boundries and radii
+    cluster_bdry = (double **)malloc(sizeof(double *) * num_clusters);
+    cluster_centroid = (double **)malloc(sizeof(double *) * num_clusters);
+    cluster_radius = (double *)malloc(sizeof(double) * num_clusters);
+    
+    for (i = 0; i < num_clusters; i++) {
+        cluster_bdry[i] = (double *)malloc(sizeof(double) * 2 * dim);
+        cluster_centroid[i] = (double *)malloc(sizeof(double) * dim);
+    }   
+    
+    //get the boundries and radii for exact cluster searching
+    getBoundries(dim, ndata, data, num_clusters, cluster_size, cluster_start, cluster_bdry, cluster_centroid, cluster_radius);
 
-    write_results(dim, ndata, data, hash_assign);
+    /*for (i = 0; i < 50; i++) {
+        for (j = 0; j < dim; j++) {
+            printf("%f-%f, ", cluster_bdry[i][j*2], cluster_bdry[i][j*2+1]);
+        }
+        printf("\n");
+    }*/
+
+	//printf("\nThe number of clusters is %d\n", num_clusters);
+
+    //write_results(dim, ndata, data, hash_assign);
 	
     /*printf("Cluster Sizes:\n");
     for (i = 0; i < num_clusters; i++) {
@@ -256,7 +348,7 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
         for (j = 0; j < m; j++) {
             printf("%d-", hash_vals[i+j]);
         }
-        printf("\n");
+        printf("\t");
     }
     printf("\n");*/
 
@@ -292,8 +384,11 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
         printf("\n");
     }*/
 
-	count = local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result);
-    printf("Number of points checked %d\n\n", count);
+    startS = clock();
+	count = local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result, cluster_bdry, cluster_radius, cluster_centroid);
+    endS = clock();
+    search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+    //printf("Number of points checked %d\n\n", count);
 
     for (i = 0; i < q*dim; i+=dim) {
         /*for (j = 0; j < dim; j++) {
@@ -307,7 +402,10 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
         distance_arr[i/dim] = pnt2pntDistance(dim, i, query, i, result);
         printf("%f\n", distance_arr[i/dim]);
     }
-    printf("\n");
+    //printf("\n");
+
+    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
+    printf("\n------------------\nThe Searching time used by the algorithm was %f seconds\n------------------\n\n", search_time_used);
 
 	//free memory
 	for (i = 0; i < ndata; i++) {
@@ -316,6 +414,11 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query) 
 	for (i = 0; i < m; i++) {
 		free(r[i]);
 	}
+    for (i = 0; i < num_clusters; i++) {
+        free(cluster_bdry[i]);
+        free(cluster_centroid[i]);
+    }
+    free(cluster_radius);
 	free(query_hash);
 	free(hash_vals);
     free(hash_assign);
