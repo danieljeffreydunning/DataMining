@@ -254,7 +254,7 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 
 void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, double *result) {
 	
-	int qi, i, j, num_clusters = 0, sum = 0, temp_hash_sum = 0, q_idx = 0, count;
+	int qi, i, j, num_clusters = 0, sum = 0, temp_hash_sum = 0, q_idx = 0, count, qcnt;
 	int *cluster_size, *cluster_start, **H, *hash_vals, *query_hash, *hash_assign;
     float *ft_data;
     double rnum, cluster_time_used, search_time_used;
@@ -312,6 +312,7 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
 	num_clusters = LSH(dim, ndata, data, m, r, b, w, num_clusters, cluster_size, cluster_start, H, hash_vals, hash_assign);
     endC = clock();
     cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
+    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
 
     //after the number of clusters is known we can allocate space for boundries and radii
     cluster_bdry = (double **)malloc(sizeof(double *) * num_clusters);
@@ -383,11 +384,13 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
         }
         printf("\n");
     }*/
-
-    startS = clock();
-	count = local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result, cluster_bdry, cluster_radius, cluster_centroid);
-    endS = clock();
-    search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+    for (qcnt = 10; qcnt < 10001; q*=10) {
+        startS = clock();
+	    count = local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result, cluster_bdry, cluster_radius, cluster_centroid);
+        endS = clock();
+        search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+        printf("\n------------------\nThe Searching time used by the algorithm for %d q's was %f seconds\n------------------\n\n", qcnt, search_time_used);
+    }
     //printf("Number of points checked %d\n\n", count);
 
     for (i = 0; i < q*dim; i+=dim) {
@@ -400,12 +403,10 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
         }
         printf("\n");*/
         distance_arr[i/dim] = pnt2pntDistance(dim, i, query, i, result);
-        printf("%f\n", distance_arr[i/dim]);
+        //printf("%f\n", distance_arr[i/dim]);
     }
     //printf("\n");
 
-    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
-    printf("\n------------------\nThe Searching time used by the algorithm was %f seconds\n------------------\n\n", search_time_used);
 
 	//free memory
 	for (i = 0; i < ndata; i++) {
