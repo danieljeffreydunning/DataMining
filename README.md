@@ -3,7 +3,7 @@ Projects for Master's project
 
 All projects are run through main.c. 
 To compile:
-mpicc main.c kdtree.c kmeans.c lsh.c util/dataFunctions.c util/compFunctions.c -lm
+mpicc main.c kdtree.c kmeans.c bisecting_kmeans.c lsh.c util/dataFunctions.c util/compFunctions.c -lm
 
 ## KDTree
 To run:

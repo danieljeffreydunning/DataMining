@@ -328,7 +328,7 @@ int search_kdtree(int dim, int ndata, double *data, int k, int q0, int *cluster_
 }
 
 void runKDTree(char *path, int ndata, int dim, int k, int q, double *query, double *result) {
-    int i, j, l, avg_checks, assign_idx;
+    int i, j, l, avg_checks, assign_idx, qcnt;
     int *cluster_assign, *cluster_size,  *cluster_start;
     float *ft_data;
     double cluster_time_used, search_time_used;
@@ -361,12 +361,15 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query, doub
     for (i = 0; i < ndata; i++) {
         cluster_assign[i] = i * dim;
     }
+
+    printf("Starting Kdtree algorithm\n\n");
     
     startC = clock();
     kdtree(dim, ndata, data, k, cluster_size, cluster_start, cluster_boundry, cluster_centroid, cluster_assign);
     endC = clock();
     cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
 
+    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
     /*for (i = 0; i < k; i++) {
         printf("L%f R%f B%f T%f\n", cluster_boundry[i][0], cluster_boundry[i][1], cluster_boundry[i][2], cluster_boundry[i][3]);
     }*/
@@ -383,21 +386,21 @@ void runKDTree(char *path, int ndata, int dim, int k, int q, double *query, doub
             }
         }
     }*/
-
-    startS = clock();
-    avg_checks = search_kdtree(dim, ndata, data, k, q, cluster_size, cluster_start, cluster_boundry, query, result);
-    endS = clock();
-    search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+    for (qcnt = 10; qcnt < 10001; qcnt*=10) {
+        startS = clock();
+        avg_checks = search_kdtree(dim, ndata, data, k, qcnt, cluster_size, cluster_start, cluster_boundry, query, result);
+        endS = clock();
+        search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+        printf("\n------------------\nThe Searching time used by the algorithm for %d q's was %f seconds\n------------------\n\n", qcnt, search_time_used);
+    }
 
     //write_results(dim, ndata, data, cluster_assign);
 
     //printf("Average number of checks was %d\n", avg_checks);
-    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
-    printf("\n------------------\nThe Searching time used by the algorithm was %f seconds\n------------------\n\n", search_time_used);
     
     for (i = 0; i < q*dim; i+=dim) {
         distance_arr[i] = pnt2pntDistance(dim, i, query, i, result);
-        printf("%f\n", distance_arr[i]);
+        //printf("%f\n", distance_arr[i]);
     }
     //printf("\n");
     
