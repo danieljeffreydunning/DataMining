@@ -7,6 +7,7 @@
 #include "util/dataFunctions.h"
 #include "util/compFunctions.h"
 
+
 int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result, double **cluster_bdry, double *cluster_radius, double **cluster_centroid) {
 	int q, qhash, i, j, l, min_clust_idx = -1, min_point_idx, loopstart, loopend, count = 0;
 	double min_distance = DBL_MAX, current_distance = 0.0, sum, dist2bound, dist2rad;
@@ -129,25 +130,32 @@ void getBoundries(int dim, int ndata, double *data, int num_clusters, int *clust
 }
 
 void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *hash_assign, int *hash_vals, int **H, int running_cnt, int m, int ndata, int dim) {
-	int i, j, k, temp_idx = 0, assign_idx = 0;
-    int *temp_assign;
+	int i, j, k, temp_idx = 0, assign_idx = 0, hash_num;
+    int *temp_assign, *clust_idxs;
 	double *temp_data;
 
 	temp_data = (double *)malloc(sizeof(double) * ndata * dim);
     temp_assign = (int *)malloc(sizeof(int) * ndata);
+    clust_idxs = (int *)malloc(sizeof(int) * running_cnt);
 
-	for (i = 0; i < running_cnt; i++) { //for each hash value
+    for (i = 0; i < running_cnt; i++) {
+        clust_idxs[i] = cluster_start[i];
+    }
+
+	//for (i = 0; i < running_cnt; i++) { //for each hash value
 		for (j = 0; j < ndata; j++) { //for each data point
-			if (hash_assign[j] == i) { // for each hash value if it matches
+			//if (hash_assign[j] == i) { // for each hash value if it matches
+            hash_num = hash_assign[j];
 				for (k = 0; k < dim; k++) { // each dimmension
-					temp_data[temp_idx+k] = data[j*dim+k];
+					temp_data[clust_idxs[hash_num]+k] = data[j*dim+k];
 				}
-                temp_assign[assign_idx] = hash_assign[j];
+                temp_assign[assign_idx] = hash_num;
                 assign_idx++;
-                temp_idx+=dim;
-			}
+                //temp_idx+=dim;
+                clust_idxs[hash_num] += dim;
+			//}
 		}
-	}
+	//}
 
 	for (i = 0; i < ndata * dim; i++) {
 		data[i] = temp_data[i];
@@ -156,6 +164,7 @@ void rearrange_data(double *data, int *cluster_size, int *cluster_start, int *ha
         hash_assign[i] = temp_assign[i];
     }
 
+    free(clust_idxs);
     free(temp_assign);
 	free(temp_data);
 }
@@ -310,9 +319,6 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
     printf("\nStarting LSH algorithm\n");
     startC = clock();
 	num_clusters = LSH(dim, ndata, data, m, r, b, w, num_clusters, cluster_size, cluster_start, H, hash_vals, hash_assign);
-    endC = clock();
-    cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
-    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
 
     //after the number of clusters is known we can allocate space for boundries and radii
     cluster_bdry = (double **)malloc(sizeof(double *) * num_clusters);
@@ -326,7 +332,9 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
     
     //get the boundries and radii for exact cluster searching
     getBoundries(dim, ndata, data, num_clusters, cluster_size, cluster_start, cluster_bdry, cluster_centroid, cluster_radius);
-
+    endC = clock();
+    cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
+    printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
     /*for (i = 0; i < 50; i++) {
         for (j = 0; j < dim; j++) {
             printf("%f-%f, ", cluster_bdry[i][j*2], cluster_bdry[i][j*2+1]);
@@ -384,12 +392,13 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
         }
         printf("\n");
     }*/
-    for (qcnt = 10; qcnt < 10001; q*=10) {
-        startS = clock();
-	    count = local_search(dim, ndata, q, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result, cluster_bdry, cluster_radius, cluster_centroid);
-        endS = clock();
-        search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
-        printf("\n------------------\nThe Searching time used by the algorithm for %d q's was %f seconds\n------------------\n\n", qcnt, search_time_used);
+    for (qcnt = 10; qcnt < 10001; qcnt*=10) {
+    startS = clock();
+	count = local_search(dim, ndata, qcnt, data, cluster_size, cluster_start, m, hash_vals, query_hash, num_clusters, query, result, cluster_bdry, cluster_radius, cluster_centroid);
+    endS = clock();
+    search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
+    printf("\n------------------\nThe Searching time used by the algorithm for %d q's was %f seconds\n------------------\n\n", qcnt, search_time_used);
+
     }
     //printf("Number of points checked %d\n\n", count);
 

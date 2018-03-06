@@ -574,9 +574,9 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, doub
     //will only work properly currently with 1 proc execution
     //write_results(dim, ndata, proc_data, cluster_assign);
 //}
-    for (qcnt = 10; qcnt < 10001; q*=10) {
+    for (qcnt = 10; qcnt < 10001; qcnt*=10) {
         startS = clock();
-	    pointcnt = search_kmeans(dim, ndata, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, query, result, world_size, world_rank, q);
+	    pointcnt = search_kmeans(dim, ndata, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, query, result, world_size, world_rank, qcnt);
         endS = clock();
         search_time_used = ((double) (endS - startS)) / CLOCKS_PER_SEC;
         printf("\n------------------\nThe Searching time used by the algorithm for %d points was %f seconds\n------------------\n\n", qcnt, search_time_used);
