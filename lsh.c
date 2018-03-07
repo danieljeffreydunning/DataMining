@@ -7,6 +7,57 @@
 #include "util/dataFunctions.h"
 #include "util/compFunctions.h"
 
+void countSort(int **arr, int n, int idx, int m, int max) {
+    int i, j;
+    int **output, *count;
+
+    count = (int *)malloc(sizeof(int) * max);
+    output = (int **)malloc(sizeof(int *) * n);
+
+    for (i = 0; i < n; i++) {
+        output[i] = (int *)malloc(sizeof(int) * m);
+    }
+
+    for (i = 0; i < max; i++) {
+        count[i] = 0;
+    }
+
+    for (i = 0; i < n; i++) {
+        count[arr[i][idx]]++;
+    }
+
+    for (i = 1; i < max; i++) {
+        count[i] += count[i - 1];
+    }
+    for (i = 0; i < max; i++) {
+    }
+
+    for (i = n-1; i >= 0; i--) {
+        for (j = 0; j < m; j++) {
+            output[count[arr[i][idx]] - 1][j] = arr[i][j];
+        }
+        count[arr[i][idx]]--;
+    }
+
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < m; j++) {
+            arr[i][j] = output[i][j];
+        }
+    }
+
+    for (i = 0; i < n; i++) {
+        free(output[i]);
+    }
+    free(count);
+}
+
+void radsort(int **arr, int n, int m, int *max) {
+    int i;
+
+    for (i = m-2; i >= 0; i--) {
+        countSort(arr, n, i, m, max[i]+1);
+    }
+}
 
 int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, int *cluster_start, int m, int *hash_vals, int *temp_hash, int running_cnt, double *query, double *result, double **cluster_bdry, double *cluster_radius, double **cluster_centroid) {
 	int q, qhash, i, j, l, min_clust_idx = -1, min_point_idx, loopstart, loopend, count = 0;
@@ -208,13 +259,59 @@ int check_hash(int **H, int *hash_vals, int *clust_cnt, int idx, int m, int runn
 	return running_cnt;
 }
 
+int new_check(int **H,int *hash_vals, int m, int ndata, int *hash_assign, int *clust_count, int *max_arr) {
+    int i, j, assign_idx = 0, cnt = 1, vals_idx = m, new_flag = 0;
+    int *temp_hash;
+
+    temp_hash = (int *)malloc(sizeof(int) * m);
+    //sort the data set, allowing duplicates for now
+    radsort(H, ndata, m+1, max_arr);
+
+    //initial stuff for first hash
+    for (i = 0; i < m; i++) {
+        temp_hash[i] = H[0][i];
+        hash_vals[vals_idx+i] = H[0][i];
+    }
+    hash_assign[H[0][m]] = assign_idx;
+    clust_count[assign_idx]++;
+
+    //get rid of duplicates and add the hashes to hash_vals
+    for (i = 1; i < ndata; i++) {
+        new_flag = 0;
+        for (j = 0; j < m; j++) {
+            if (H[i][j] != temp_hash[j]) {
+                new_flag = 1;
+                break;
+            }
+        }
+        if (new_flag == 1) { //new hash
+            for (j = 0; j < m; j++) {
+                temp_hash[j] = H[i][j];
+                hash_vals[vals_idx+j] = H[i][j];
+            }
+            assign_idx++;
+            vals_idx+=m;
+            cnt++;
+            hash_assign[H[i][m]] = assign_idx;
+            clust_count[assign_idx]++;
+        }
+        else { //duplicate hash
+            hash_assign[H[i][m]] = assign_idx;
+            clust_count[assign_idx]++;
+        }
+    }
+
+    return cnt;
+}
+
 int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w, int num_clusters, int *cluster_size, int *cluster_start, int **H, int *hash_vals, int *hash_assign) {
 	
 	int i, j, k, h_i, hash_x_idx = 0, hash_y_idx = 0;
 	int H_count = 0, running_cnt = 0, clust_start_idx = 0;
-	int *clust_cnt, *tmp_size, *temp_start;
+	int *clust_cnt, *max_arr;
 	
 	clust_cnt = (int *)malloc(sizeof(int) * ndata); //count of how many times that hash value appears
+    max_arr = (int *)malloc(sizeof(int) * m);
 
 	for (i = 0; i < ndata * m; i++) {
 		hash_vals[i] = -1;
@@ -222,23 +319,28 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 	for (i = 0; i < ndata; i++) {
 		clust_cnt[i] = 0;
 	}
+    for (i = 0; i < m; i++) {
+        max_arr[i] = 0;
+    }
 
 	//get values for each data point for each of the m vectors
 	for (i = 0; i < ndata*dim; i+=dim) { //for each data point
 		for (j = 0; j < m; j++) { //for each m value
-
 			h_i = (int) (fabs(dotprod(dim, data, r, i, j) - b[j])) / w; //because int division, we get the floor
 			H[hash_x_idx][hash_y_idx] = h_i;
 			hash_y_idx++;
+            max_arr[j] = MAX(max_arr[j], h_i);
 		}
 		hash_y_idx = 0;
 		hash_x_idx++;
 	}
 
+    running_cnt = new_check(H, hash_vals, m, ndata, hash_assign, clust_cnt, max_arr);
+
 	//compare hash values to get the number of clusters
-	for (i = 0; i < ndata; i++) {
+	/*for (i = 0; i < ndata; i++) {
 		running_cnt = check_hash(H, hash_vals, clust_cnt, i, m, running_cnt, hash_assign);
-	}
+	}*/
 
 	for (i = 0; i < running_cnt; i++) {
 		cluster_size[i] = clust_cnt[i];
@@ -257,6 +359,7 @@ int LSH(int dim, int ndata, double *data, int m, double **r, double *b, double w
 	rearrange_data(data, cluster_size, cluster_start, hash_assign, hash_vals, H, running_cnt, m, ndata, dim);
 
     free(clust_cnt);
+    free(max_arr);
 
 	return running_cnt;
 }
@@ -284,7 +387,7 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
 
 	//initialize 2d array
 	for (i = 0; i < ndata; i++) {
-		H[i] = (int *)malloc(sizeof(int) * m);
+		H[i] = (int *)malloc(sizeof(int) * (m+1));
 	}
 	for (i = 0; i < m; i++) {
 		r[i] = (double *)malloc(sizeof(double) * dim);
@@ -295,6 +398,10 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
 		cluster_size[i] = 0;
 		cluster_start[i] = -1;
 	}
+
+    for (i = 0; i < ndata; i++) {
+        H[i][m] = i;
+    }
 
     //start reading binary file
     readFloatBin(path, ft_data, ndata * dim, 0);
