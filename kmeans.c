@@ -548,12 +548,12 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, doub
     }
 
     startC = clock();
-	while (kcheck < k) {
+	/*while (kcheck < k) {
         //printf("%d kcheck %d\n", world_rank, kcheck);
 		initializeCentroids(dim, proc_chunk_size, proc_data, k, cluster_centroid, kcheck, kcheck, world_rank, world_size);
 		kcheck++;
 		MPI_Barrier(MPI_COMM_WORLD);
-	}
+	}*/
     /*for (i = 0; i < k; i++) {
         for (j = 0; j < dim; j++) {
             printf("%f, ", cluster_centroid[i][j]);
@@ -561,7 +561,7 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, doub
         printf("\n");
     }*/
 
-    //runBKmeans(dim, k, ndata, proc_data, cluster_centroid);
+    runBKmeans(dim, k, ndata, proc_data, cluster_centroid);
 
 	cycles = kmeans(dim, proc_chunk_size, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, cluster_assign, world_size, world_rank);
     endC = clock();
