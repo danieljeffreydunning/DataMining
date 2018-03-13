@@ -186,7 +186,7 @@ int kmeans(int dim, int ndata, double *data, int k, int *cluster_size, int *clus
 
         /*if (world_rank == 0) {
             printf("%d\n", cycle_cnt);
-        } */
+        }*/ 
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
@@ -479,6 +479,8 @@ void initializeCentroids(int dim, int ndata, double *data, int k, double **clust
 	for (i = 0; i < dim; i++) {
 		cluster_centroid[place_idx][i] = temp_point[i];
 	}
+
+    free(temp_point);
 }
 
 void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, double *result) {
@@ -554,16 +556,19 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, doub
 		kcheck++;
 		MPI_Barrier(MPI_COMM_WORLD);
 	}*/
-    /*for (i = 0; i < k; i++) {
+
+    runBKmeans(dim, k, proc_chunk_size, proc_data, cluster_centroid);
+    //printf("here\n");
+    /*for (i = 0; i < 100*dim; i+=dim) {
         for (j = 0; j < dim; j++) {
-            printf("%f, ", cluster_centroid[i][j]);
+            printf("%f, ", proc_data[i+j]);
         }
         printf("\n");
     }*/
-
-    runBKmeans(dim, k, ndata, proc_data, cluster_centroid);
-
 	cycles = kmeans(dim, proc_chunk_size, proc_data, k, cluster_size, cluster_start, cluster_radius, cluster_centroid, cluster_assign, world_size, world_rank);
+
+    //printf("here\n");
+
     endC = clock();
     cluster_time_used = ((double) (endC - startC)) / CLOCKS_PER_SEC;
     printf("\n------------------\nThe Clustering time used by the algorithm was %f seconds\n------------------\n\n", cluster_time_used);
@@ -592,12 +597,14 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, doub
         //printf("\n");
     }
 
+    for (i = 0; i < k; i++) {
+        free(cluster_centroid[i]);
+    }
 
     free(ft_data);
     free(distance_arr);
 	free(result);
 	free(cluster_radius);
-	free(cluster_centroid);
 	free(cluster_start);
 	free(cluster_size);
     free(proc_data);
