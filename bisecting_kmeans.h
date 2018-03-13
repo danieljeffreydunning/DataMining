@@ -14,7 +14,7 @@
 
 void calculateInitCentroids(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int clust1, int clust2);
 
-int assignInitData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int clust1, int clust2);
+void assignInitData(int dim, int ndata, double *data, int k, int *cluster_size, int *cluster_start, double **cluster_centroid, int *cluster_assign, int clust1, int clust2);
 
 int bkInitCentroids(int dim, int ndata, double *data, int *cluster_size, int *cluster_start, double **cluster_centroid, int place_idx, int cent_idx, int cent_count, int *cluster_assign);
 

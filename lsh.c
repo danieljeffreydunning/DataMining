@@ -427,6 +427,7 @@ void runLSH(char *path, int ndata, int dim, int m, int w, int q, double *query, 
     startC = clock();
 	num_clusters = LSH(dim, ndata, data, m, r, b, w, num_clusters, cluster_size, cluster_start, H, hash_vals, hash_assign);
 
+    printf("\n%d\n", num_clusters);
     //after the number of clusters is known we can allocate space for boundries and radii
     cluster_bdry = (double **)malloc(sizeof(double *) * num_clusters);
     cluster_centroid = (double **)malloc(sizeof(double *) * num_clusters);
