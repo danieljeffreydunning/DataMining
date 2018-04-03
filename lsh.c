@@ -172,7 +172,7 @@ void getBoundries(int dim, int ndata, double *data, int num_clusters, int *clust
         }
         temp_max = 0.0;
         //get cluster_radius values
-        for (j = loopstart; j < loopend; j++) {
+        for (j = loopstart; j < loopend; j+=dim) {
             temp_max = MAX(temp_max, pnt2centDistance(dim, i, j, data, cluster_centroid));
         }
         cluster_radius[i] = temp_max;
