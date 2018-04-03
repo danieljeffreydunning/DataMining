@@ -559,9 +559,9 @@ void runKMeans(char *path, int ndata, int dim, int k, int q, double *query, doub
 
     runBKmeans(dim, k, proc_chunk_size, proc_data, cluster_centroid);
     //printf("here\n");
-    /*for (i = 0; i < 100*dim; i+=dim) {
+    /*for (i = 0; i < k; i++) {
         for (j = 0; j < dim; j++) {
-            printf("%f, ", proc_data[i+j]);
+            printf("%f, ", cluster_centroid[i][j]);
         }
         printf("\n");
     }*/
