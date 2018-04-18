@@ -54,6 +54,12 @@
 
 
 \documentclass[journal]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{mathtools}
+\makeatletter
+\newcommand*{\rom}[1]{\expandafter\@slowromancap\romannumeral #1@}
+\makeatother
+\graphicspath{ {../../plots/} }
 %
 % If IEEEtran.cls has not been installed into the LaTeX system files,
 % manually specify the path to it like:
@@ -430,7 +436,7 @@
 % As a general rule, do not put math, special symbols or citations
 % in the abstract or keywords.
 \begin{abstract}
-Searching data is an area of research that is always open to improvement. The problem of searching one-dimensional data has already been solved, but with the increase of Big Data, as well as an increase in the need for computational sciences, higher-dimensional data has been on the rise. It is known that searching sorted data is exceptionally faster than unsorted, but the problem has become finding efficient methods of sorting data which has more than one dimension. The purpose of this paper is not to create a new method for sorting high-dimensional data, rather, comparing previous methods and comparing their efficiency. In addition, we will investigate the searching methods performed on each the clustered data, and study whether this should have any impact on the use of the clustering algorithms.
+Searching data is an area of research that is always open to improvement. The problem of searching one-dimensional data has already been solved, but with the increase of Big Data, as well as an increase in the need for computational sciences, higher-dimensional data has been on the rise. It is known that searching sorted data is exceptionally faster than unsorted, but the problem has become finding efficient methods of sorting data which has more than one dimension. The purpose of this paper is not to create a new method for sorting high-dimensional data, rather, comparing previous methods and comparing their efficiency. In addition, we will investigate the searching methods performed on the clustered data, and study whether this should have any impact on the use of the clustering algorithms.
 \end{abstract}
 
 % Note that keywords are not normally used for peerreview papers.
@@ -471,48 +477,187 @@ Clustering, High-dimension data, Searching, Efficiency
 % 
 % Here we have the typical use of a "T" for an initial drop letter
 % and "HIS" in caps to complete the first word.
-\IEEEPARstart{T}{here} has constantly been a need for searching data in all fields of research. This task can be either searching for a specific point in the data set, or searching for a point which is closest to a given query point. No scientific or technological research area can avoid the need to compare new data with already gathered data, so the desire to do this efficiently is high. The techniques for actually searching data that is sorted are mostly known; the most famous example being a binary search of a list. Initially, the question must be asked, whether it is computationally worth it to sort data before it is searched. The search time of a brute force search, searching through all n elements of a data set, is \textit{O(n)}. Going back to the example, the best case for search time for a binary search is: the time taken to sort the data (at best \textit{O(nlog(n))}) plus the binary search time (\textit{log(n)}). This total time is more than a simple brute force search, so why bother with sorting the data? The reason lies in the fact that sorting allows us to search the same data set efficiently for multiple queries. If a particular data is only ever search once and then discarded, it would be a waste to perform a sorting technique to it before search, because it would take more time. However, this is rarely the case, and in most cases data sets need to be searched for thousands of queries, making sorting the efficient solution.\par
+\IEEEPARstart{T}{here} has constantly been a need for searching data in all fields of research. This task can be either searching for a specific point in the data set, or searching for a point which is closest to a given query point. No scientific or technological research area can avoid the need to compare new data with already gathered data, so the desire to do this efficiently is high. The techniques for actually searching data that is sorted are mostly known; the most famous example being a binary search of a list. Initially, the question must be asked, whether it is computationally worth it to sort data before it is searched. The search time of a brute force search, searching through all n elements of a data set, is \textit{O(n)}. In the example of searching a one-dimensional list, the best case for search time for a binary search is: the time taken to sort the data (at best \textit{O(nlog(n))}) plus the binary search time (\textit{log(n)}). This total time is more than a simple brute force search, so why bother with sorting the data? The reason lies in the fact that sorting allows us to search the same data set efficiently for multiple queries. If a particular data is only ever searched once and then discarded, it would be a waste to perform a sorting technique to it before searching, because it would take more time. However, this is rarely the case, and in most cases data sets need to be searched for thousands of queries, making sorting the efficient solution.\par
 
 Sorting techniques have been researched extensively for one-dimensional data, and the concept of sorting, for example, a list of numbers is simple: the numbers are arranged in ascending (or descending) order. However, as we increase dimensions, the task of grouping the data in terms of \textit{least} and \textit{most} becomes harder. Even using a two-dimensional example, it is easy to say that on a coordinate plane a point with small x and small y values is "smaller" than a number with large x and large y values. However, how do we categorize when x is small and y is large, or x is large and y is small? These distinctions are harder to make, so instead we \textit{cluster} the data by how similar it is to those points around it. We can then perform groupings within the data, and can use these groups or clusters to search data points that are similar. \par
 
-The remainder the the paper will follow as such. Section 2 will discuss the problem in more detail and give an explanation for each of the data sets used. Section 3 will give more detail to explain the clustering algorithms and the search procedure used within them. Section 4 will discuss the procedure of the research and the experiments that followed. Finally, Section 5 will discuss the results of the tests and Section 6 will discuss the contributions of this research and future research.
+The remainder the the paper will follow as such. Section \rom{2} will discuss the problem in more detail and give an explanation for each of the data sets used. Section \rom{3} will give more detail to explain the clustering algorithms and the search procedure used within them, including our novel method for searching data resulting from one of the clustering techniques. Section \rom{4} will discuss the procedure of the research and the experiments that followed. Finally, Section \rom{5} will discuss the results of the tests and Section \rom{6} will discuss the contributions of this research and future research.
 
 \section{Problem and Data Sets}
-The main goal of this research was to compare various methods of clustering high-dimensional data, and study the efficiency of them, both for their speed in clustering, but also in the speed of the searching for the closest data point in each cluster using the resulting clusters. In addition to having a dimensionality of at least two, the data sets were also expected to have a sufficiently large amount data points attributed to them. Four data sets were used for the tests. In the tests performed, up to 10,000 query points were randomly generated (with the corresponding dimensions based on their data set counterpart). The seed for these random query points was kept the same through all algorithms and their subsequent tests, so that the results were comparable. The first data set was randomly generated and not used for testing the efficiency of the algorithms, as it was relatively small, with only 10,000 data points of two dimensions, so there was little time distinction between the algorithms using this set. This data set was generated by having mostly random points, but with the addition of several points per query that were close in distance to each query point. This is done as mentioned in REFERENCE HERE because in most real-world scenarios there are a couple of points which lie very close the the query, and this data set was created to mimic those scenarios. In addition, the data set was used to check for algorithm accuracy compared to a brute force search, and also to show a two-dimensional representation of how the clustering algorithms worked. The second data set is a list a the longitude and latitude of all major cities in the world. The third set consists of the results from an experiment studying the chemical reactions between ethylene gas and carbon-dioxide gas in a chamber, with the results coming from several sensors over the course of many time steps. The last data set comes from several studies of cancerous cells, which contains the gene expression of all possible genes taken from cancer cells. These data sets were chosen because of the unique characteristics each one brings; The world coordinates contain millions of data points with low dimensionality, the chemical reaction set has millions of points while also have fairly high dimensionality, and the cancer set has a small number of points with extremely high dimensionality. The data sets are listed in Table 1 with their respective attributes.
-INSERT TABLE HERE WITH THE 4 DATA SETS
+The main goal of this research was to compare various methods of clustering high-dimensional data, and to study the efficiency of them, both for their speed in clustering, but also in the speed of the searching for the closest data point in each cluster using the resulting clusters. In addition to having a dimensionality of at least two, the data sets were also expected to have a sufficiently large amount of data points attributed to them. Four data sets were used for the tests. In the tests performed, up to 10,000 query points were randomly generated (with the corresponding dimensions based on their data set counterpart). The seed for these random query points was kept the same through all algorithms and their subsequent tests, so that the results were comparable. The first data set was randomly generated and not used for testing the efficiency of the algorithms, as it was relatively small. With only 10,000 data points of two dimensions, there was little time distinction between the algorithms using this set. This data set was generated by having mostly random points, but with the addition of several points per query that were close in distance to each query point. This is done as mentioned in \cite{lsh-1} because in most real-world scenarios there are a couple of points which lie very close to the query, and this data set was created to mimic those scenarios. In addition, the data set was used to check for algorithm accuracy compared to a brute force search, and also to show a two-dimensional representation of how the clustering algorithms worked. The second data set is a list of the longitude and latitude of all major cities in the world. The third set consists of the results from an experiment studying the chemical reactions between ethylene gas and carbon-dioxide gas in a chamber, with the results coming from several sensors over the course of many time steps. The last data set comes from several studies of cancerous cells, which contains the gene expression of all possible genes taken from cancer cells. These data sets were chosen because of the unique characteristics each one brings; the world coordinates contain millions of data points with low dimensionality, the chemical reaction set has millions of points while also having fairly high dimensionality, and the cancer set has a small number of points with extremely high dimensionality. The data sets are listed in the table below with their respective attributes.
+\begin{table}[h]
+\caption{Data sets}
+ \begin{tabular}{||c | c | c||} 
+ \hline
+ \textbf{Data Set} & \textbf{Data Points} & \textbf{Dimensions}\\ [0.5ex] 
+ \hline\hline
+ Test & 10,000 & 2 \\ 
+ \hline
+ World Cities & 3,173,958 & 2\\
+ \hline
+ Gas Mixture & 4,208,262 & 16\\
+ \hline
+ Cancer Expression & 721 & 60,483\\
+ \hline
+\end{tabular}
+\end{table}
 
 \section{Algorithms}
 The clustering algorithms that were used for the research are KD-Tree, KMeans, and Locality Sensitive Hashing (LSH). These are three of the primary clustering algorithms used for data mining, and they all cluster the data using different techniques.
+%\begin{equation}
 
+%\end{equation}
 \subsection{KD-Tree}
-KD-Tree is a recursive algorithm used to cluster data in rectangle-shaped groups. This is done by splitting the data set in half along the dimension with the highest variance. GIVE EQUATION FOR VARIANCE. This splitting is then performed on each subsequent group until the desired number of clusters is reached. As a matter of principle, it is efficient to use a number of clusters equal to a power of two. Over the course of the clustering, it is important to keep track of each cluster's minimum and maximum value for each dimension, as this will be store at the end as the boundaries of the cluster. This boundary is used for searching the clusters. For each query, a euclidian distance will be calculated between the closest point of the cluster and the query point, which will be 0 if the point lies within the boundaries of the cluster. At this point, all the data points in the closest cluster are exhaustively searched to find the minimum distance to the query point. At this point, it is important to check whether there are any clusters which are closer to the query point than the minimum distance found. This is because it is possible for a point to have its nearest neighbor lie in a cluster different than the one the query point falls into. For every cluster that is closer than the initially-found distance, we exhaustively check every point in those clusters, comparing to the minimum distance. If the particular application in fact only needed an approximate nearest neighbor, and not an exact nearest neighbor, the last step in the search can be excluded. One would only need to search for the closest data point in the closest cluster, and that would be sufficient. An example of the clustering done using KD-Tree is shown in Figure 1. INSERT FIGURE
+KD-Tree is a recursive algorithm used to cluster data in rectangular groups. This is done by splitting the data set in half along the dimension with the highest variance (shown below, where $\bar{x}$ is the centroid of the cluster). 
+$$\frac{1}{n}\sum_{i=1}^{n}  (x_i-\bar{x})^2$$
+ This splitting is then performed on each subsequent group until the desired number of clusters is reached. As a matter of principle, it is efficient to use a number of clusters equal to a power of two. Over the course of the clustering, it is important to keep track of each cluster's minimum and maximum value for each dimension, as this will be stored at the end as the boundaries of the cluster. This boundary is used for searching the clusters. For each query, a euclidian distance will be calculated between the closest point of the cluster and the query point, which will be 0 if the point lies within the boundaries of the cluster. At this point, all the data points in the closest cluster are exhaustively searched to find the minimum distance to the query point. At this point, it is important to check whether there are any clusters which are closer to the query point than the minimum distance found. This is because it is possible for a point to have its nearest neighbor lie in a cluster different than the one the query point falls into. For every cluster that is closer than the initially-found distance, we exhaustively check every point in those clusters, comparing to the minimum distance. If the particular application in fact only needed an approximate nearest neighbor, and not an exact nearest neighbor, the last step in the search can be excluded. One would only need to search for the closest data point in the closest cluster, and that would be sufficient. An example of the clustering done using KD-Tree is shown in Figure 1.
+ 
+\begin{figure}[h]
+	\caption{Example KD-Tree clustering with 16 clusters}
+	\includegraphics[width=8cm]{local_kdtree}
+\end{figure}
 
 \subsection{KMeans}
 KMeans was one of the first algorithms used for clustering multi-dimensional data. The process involves initializing centroids equal to the number of clusters needed. Each data point is then assigned to the centroid it is closest with, and a new centroid is calculated using the average value in each dimension of the points assigned to it. This process continues, assigning points to a centroid and calculating new centroids, until there is no change in centroid from one iteration to the next, or the assignment of data points does not change. The clusters that are formed take on a circular shape, and for this reason the cluster boundary uses the radius from each cluster centroid, which is simply the distance to the farthest point in each cluster. Searching can then be done by finding which cluster is the closest, and searching points in it. The closest distance will be the distance to the centroid, minus the cluster radius. If this value is negative, it means the query point falls inside of that cluster. As with KD-Tree, once the initial minimum distance to a point within a cluster is found, it is important to check points in other clusters where the distance to that cluster is less than the minimum distance to a point already found. \par
-KMeans is a very powerful algorithm, and will of course always yield the correct results, however it is extremely computation-heavy. Each iteration requires each point finding the different lengths to each centroid, which is very time-consuming when there are a large number of centroids and the data has many dimensions. In addition, the number of iterations can be high, which leads to more computations. The amount of time that the algorithm takes is very dependent on the initial centroids. The simple way to generate them, apart from random points, is to choose a data point as the starting centroid. Next, choose the data point which is farthest away from that point as the next centroid. For the future centroids, obtain maximum distances to each centroid for each data point, and choose the minimum of those maximums. This technique, however, tends to not yield much better efficiency results than simply choosing random centroids. The technique used to calculate the initial centroids for this research is a variation of KMeans called Bisecting-KMeans. The initial centroid is chosen the same way, choosing a random data point. After the second point is chosen (the original way), however, the KMeans algorithm is then performed on those two points, assigning data to them, and calculating new centroids, with the same stopping conditions. Once the two centroids are "stable" i.e. unchanging, Then the next centroid is added, using the minimum maximum point method, and the three centroids and then put through the algorithm. It is obvious that the initialization of the centroids takes longer than the simple ways, because it must go through the KMeans algorithm at each step. However, hope of doing this is that each additional centroid will not take long to compute if the other ones are already "good" centroids, and the goal of this technique is that the actual KMeans algorithm will run more efficiently when the initial centroids start off close to their final spot. Figure 2 shows an example of clustering done by KMeans. INSERT FIGURE
+KMeans is a very powerful algorithm, and will of course always yield the correct results, however it is extremely computation-heavy. Each iteration requires each point finding the different lengths to each centroid, which is very time-consuming when there are a large number of centroids and the data has many dimensions. In addition, the number of iterations can be high, which leads to more computations. The amount of time that the algorithm takes is very dependent on the initial centroids. The simple way to generate them, apart from random points, is to choose a data point as the starting centroid. Next, choose the data point which is farthest away from that point as the next centroid. For the future centroids, obtain maximum distances to each centroid for each data point, and choose the minimum of those maximums. This technique, however, tends to not yield much better efficiency results than simply choosing random centroids. The technique used to calculate the initial centroids for this research is a variation of KMeans called Bisecting-KMeans. The initial centroid is chosen the same way, choosing a random data point. After the second point is chosen (the original way), however, the KMeans algorithm is then performed on those two points, assigning data to them, and calculating new centroids, with the same stopping conditions. Once the two centroids are "stable" \textit{i.e.} unchanging, the next centroid is added, using the minimum maximum point method, and the three centroids are then fed into the algorithm. It is obvious that the initialization of the centroids takes longer than the simple ways, because it must go through the KMeans algorithm at each step. However, the hope of doing this is that each additional centroid will not take long to compute if the other ones are already "good" centroids, and the goal of this technique is that the actual KMeans algorithm will run more efficiently when the initial centroids start off close to their final spot. Figure 2 shows an example of clustering done by KMeans.
+\begin{figure}[t]
+	\caption{Example KMeans clustering with 16 clusters}
+	\includegraphics[width=8cm]{local_kmeans}
+\end{figure}
 
 % needed in second column of first page if using \IEEEpubid
 %\IEEEpubidadjcol
 
 \subsection{LSH}
-The LSH algorithm REFERENCE HERE BOTH PAPERS is much more recent than either KD-Tree or KMeans, and it clusters data in a different way than its those algorithms. The simple goal of LSH is to obtain several hash values for each data point, which together make up its overall hash value. The idea is that data points which are near each other will share the same or similar (differing by one number) hash values. Getting the hash values involves using this formula INSERT FORMULA where INSERT DESCRIPTIONS. Apart from calculating the dot product, LSH benefits from being unaffected by the dimensionality of the data, because it mainly works with hash values for each data point, rather than the point itself. As one might expect, data points that have the same hash value are grouped in the same cluster. Another difference between LSH and the former algorithms is that the number of clusters is undefined. The number of clusters is dependent on how many vectors are used, the values of the vectors themselves, and how much the clusters are "cut" with the \textit{w} value. Searching is done by following the same hashing steps on the query point, and searching data points in the cluster with the matching hash value. As described in the papers, the searching is only an approximate search, and no information is given for an exact search after LSH has been applied. This is one novel part of this research and our contribution, where we give a solution for an exact search. It is more complicated to find the appropriate additional clusters to search because it depends heavily on the vectors used for hashing. In two dimensions the clusters tend to look like parallelograms, and the closer the vectors are to being parallel, the thinner the clusters become, meaning clusters farther away of potential of containing the closest point. The technique simply follows a combination of the previous approaches for the other algorithms. Boundaries are found in each dimension, and a centroid and radius is found, for each cluster. For each query point, we find which of these boundaries is the furthest, and associate that value with each cluster. The larger of the two distances is used when trying to find the minimum distance because we cannot afford to exclude a cluster, since the boundaries offer different cluster shapes. This results in slightly more computation, but guaranteed correctness. Once the maximum boundary distance for each cluster is found, the searching becomes the with previous algorithms. If that distance is less than the distance to a data point found, that cluster's points must also be searched. It should be noted that this process of finding boundaries and radii, along with the exact search adds a great amount of time to the algorithm, though it is necessary for proper comparison. An example of clustering done with \textit{m} = 3 and \textit{w} = 500 is shown in Figure 3.
+The LSH algorithm \cite{lsh-1,lsh-2,lsh-3} is much more recent than either KD-Tree or KMeans, and it clusters data in a different way than those algorithms. The simple goal of LSH is to obtain several hash values for each data point, which together make up its overall hash value. The idea is that data points which are near each other will share the same or similar (differing by one number) hash values. Getting the hash values involves using this formula
+$$h_i(x) = \left \lfloor{\frac{<x, r_i> - b_i}{w}}\right \rfloor $$
+ where
+ \begin{itemize}
+  \item $h_i$ is the $i^{th}$ hash
+  \item $r_i$ is the $i^{th}$ vector
+  \item $b_i$ is the $i^{th}$ offset and
+  \item w is the number to partition each vector into chunks
+ \end{itemize}
+ There are \textit{m} vectors and so there are \textit{m} offsets and hashes. It is a good rule of thumb to start \textit{m} very small (3 or 4) and \textit{w} quite large (relative to the data set size). Apart from calculating the dot product, LSH benefits from being unaffected by the dimensionality of the data, because it mainly works with hash values for each data point, rather than the point itself. As one might expect, data points that have the same hash value are grouped in the same cluster. Another difference between LSH and the former algorithms is that the number of clusters is undefined. The number of clusters is dependent on how many vectors are used (\textit{m}), the values of the vectors themselves, and how much the clusters are "cut" (with the value of \textit{w}). Searching is done by following the same hashing steps on the query point, and searching data points in the cluster with the matching hash value. As described in \cite{lsh-1}, the searching is only an approximate search, and no information is given for an exact search after LSH has been applied. Creating an exact search is one novel part of this research and our contribution, where we give a solution for an exact search. It is more complicated to find the appropriate additional clusters to search because it depends heavily on the vectors used for hashing. In two dimensions the clusters tend to look like parallelograms, and the closer the vectors are to being parallel, the narrower the clusters become, meaning clusters farther away have the potential of containing the closest point. The technique simply follows a combination of the previous approaches for the other algorithms. Boundaries are found in each dimension, and a centroid and radius is found for each cluster. For each query point, we find which of these boundaries is the furthest, and associate that value with each cluster. The minimum of the two distances is used when trying to find the minimum distance because we cannot afford to exclude a cluster, since the boundaries offer different cluster shapes. This results in slightly more computation, but guaranteed correctness. Once the maximum boundary distance for each cluster is found, the searching becomes the same as previous algorithms. If that distance is less than the distance to a data point found, that cluster's points must also be searched. It should be noted that this process of finding boundaries and radii, along with the exact search adds a great amount of time to the algorithm, though it is necessary for proper comparison. An example of clustering done with \textit{m} = 3 and \textit{w} = 500 is shown in Figure 3.
+\begin{figure}[h]
+	\caption{Example LSH clustering forming 341 clusters}
+	\includegraphics[width=8cm]{local_hash_500_3}
+\end{figure}
 
 \section{Test Procedure}
-Testing of the algorithms was straightforward. Each algorithm was tested on each set of data, with different numbers of clusters in each test, so that the most efficient combination could be achieved for each algorithm. The time taken to cluster the data was measured independent from the time taken to search the data. For each algorithm the parameters that minimized the total clustering plus search time was used as a final comparison between the algorithms for each data set. It is important to measure the time for clustering and searching independently because one can gather a greater breadth of knowledge about the algorithm by investigating the efficiency with which it performs each task. Each algorithm had a specific set of requirements imposed by the researchers for how the number of clusters should be chosen. The number of clusters (\textit{k}) for KD-Tree was set to a power of 2. This is for simplicity and efficiency, as the algorithm works by splitting each previous cluster in half, so very little time is saved from not doubling the number of clusters at each step. For instance, instead of choosing 512 clusters, if one chooses 500 clusters, the clustering time is relatively unchanged and, except for particular data sets, the search time would be increased. The value for \textit{k} when running KMeans was unable to be increased above 50 in most cases. The reasoning for this is explained further, however the simple explanation is even when increasing the efficiency by combining it with Bisecting-kmeans, the shear amount of computation time with either large data sets or extremely high-dimensionality causes the algorithm to run longer than a reasonable amount (10+ hours) just for clustering. LSH is a different type of algorithm than the other two, in that the number of clusters is not specified by the developer. Instead, it is a bi-product of the number of vectors used and the way each vector is partitioned. Instead of choosing a specific number of clusters when running LSH, the researchers had to choose values of \textit{m} and \textit{w} such that an informative and reasonable number of clusters resulted. This involved some initial guess and check, partnered with more educated guess based on early tests.
+Testing of the algorithms was straightforward. Each algorithm was tested on each set of data, with different numbers of clusters in each test, so that the most efficient combination could be achieved for each algorithm. The time taken to cluster the data was measured independently from the time taken to search the data. For each algorithm the parameters that minimized the total clustering plus search time was used as a final comparison between the algorithms for each data set. It is important to measure the time for clustering and searching independently because one can gather a greater breadth of knowledge about the algorithm by investigating the efficiency with which it performs each task. \footnote{Some of the graphs have a broken y-axis or contain different units (such as decaseconds (das)). This is because for several of the tests the clustering time was extremely small compared to the search time, and some of the shape was lost or overlapped. The graph is constructed in a way that still shows the features of the graph. This occurs in Figures 6, 10, 11, 12, and 13.}
+
+\begin{figure}[h]
+	\includegraphics[width=8cm]{kd_world_time}
+	\caption{KD-Tree clustering on the world cities data set}
+\end{figure}
+\begin{figure}[h]
+	\includegraphics[width=8cm]{kd_eth_time}
+	\caption{KD-Tree clustering on the ethylene gas mixture data set}
+\end{figure}
+\begin{figure}[h!]
+	\includegraphics[width=8cm]{kd_cancer_time}
+	\caption{KD-Tree clustering on the cancer sample expression data set}
+\end{figure}
+
+Each algorithm had a specific set of requirements imposed by the researchers for how the number of clusters should be chosen. The number of clusters (\textit{k}) for KD-Tree was set to a power of 2. This is for simplicity and efficiency, as the algorithm works by splitting each previous cluster in half, so very little time is saved from not doubling the number of clusters at each step. For instance, instead of choosing 512 clusters, if one chooses 500 clusters, the clustering time is relatively unchanged and, except for particular data sets, the search time would be increased. 
+
+\begin{figure}[b]
+	\includegraphics[width=8cm]{km_world_time}
+	\caption{KMeans clustering on the world cities data set}
+\end{figure}
+
+The value for \textit{k} when running KMeans was unable to be increased above 50 in most cases. The reasoning for this is explained further, however the simple explanation is that even when increasing the efficiency by combining it with Bisecting-kmeans, the shear amount of computation time with either large data sets or extremely high-dimensionality causes the algorithm to run longer than a reasonable amount (10+ hours) just for clustering. LSH is a different type of algorithm than the other two, in that the number of clusters is not specified by the developer. Instead, it is a bi-product of the number of vectors used and the way each vector is partitioned. Instead of choosing a specific number of clusters when running LSH, the researchers had to choose values of \textit{m} and \textit{w} such that an informative and reasonable number of clusters resulted. This involved some initial guess and check, partnered with a more educated guess based on early tests.
 
 \section{Results}
-The graphs from the respective tests are shown in Figures 4 through SOMETHING. A similar trend for all data sets appears from the graphs. KMeans was the slowest algorithm for both clustering and searching. The comparison of searching is rather unfair for this algorithm, because with large data sets, when the data is only clustered into at most 50 clusters, there is still a high number of points to exhaustively search within that cluster, so not as much time is saved in the clustering. In fact, the searching techniques for both KD-Tree and KMeans is quite similar, so the KMeans algorithm could, in theory, perform similarly in searching. However, it falls drastically behind in its clustering efficiency, so much so that the searching cannot even be compared on the same level. Both KD-Tree and LSH had efficient clustering of all data sets. This due to the fact that, unlike KMeans, neither algorithm requires performing distance calculations for all the points, and comparing these distances, until the searching phase, which is a commonality for all algorithms. Instead, each algorithm only performs a single (in reality it is one calculation for each dimension) calculation for each cluster, and compares across that calculation as oppose to the calculations needed for each point in KMeans. The main calculation needed in KD-Tree is to compute the variance for each dimension in each cluster so that  it can split the cluster along the correct dimension. For LSH, the computation comes from computing the dot product with each data point and the vectors used for the hashing. \par
+The graphs from the respective tests are shown in Figures 4 through SOMETHING. A similar trend for all data sets appears from the graphs. KMeans was the slowest algorithm for both clustering and searching. The comparison of searching is rather unfair for this algorithm, because with large data sets, when the data is only clustered into at most 50 clusters, there is still a high number of points to exhaustively search within that cluster, so not as much time is saved in the clustering. In fact, the searching techniques for both KD-Tree and KMeans is quite similar, so the KMeans algorithm could, in theory, perform similarly in searching. However, it falls drastically behind in its clustering efficiency, so much so that the searching cannot even be compared on the same level. Both KD-Tree and LSH had efficient clustering of all data sets. 
 
-In most cases, KD-Tree had faster search times, while LSH presented drastically better clustering times. This is to be expected, as the characteristics needed to do a search on the clusters for both of the algorithms involves the boundaries of the clusters. KD-Tree keeps track of these values in each phase of its clustering. However, LSH does not typically need that information unless it intends to perform an exact search, so these values must be calculated during the search time for LSH. There needed to be a distinct time for calculating these borders needed for an exact search in LSH. In the other algorithms this time is part of the clustering, however, in LSH it was added to the search time. The reasoning behind this choice is the fact that the other algorithms need to keep track of the boundary values in clustering, so adding them to their appropriate lists or arrays is not time consuming, in fact, it is the exact same time as if it was done after clustering. For LSH, on the other hand, the boundary values are not added until after the clustering is completed because it is not needed for clustering. In fact, unlike the other two algorithms, those cluster boundaries are not even needed for an approximate search of the single closest cluster. It is only needed for the exact search in which other clusters need to be checked. Figure SOMETHING+1 shows each algorithms best time for each data set.
+\begin{figure}[h]
+	\includegraphics[width=8cm]{km_eth_time}
+	\caption{KMeans clustering on the ethylene gas mixture data set}
+\end{figure}
+\begin{figure}[h]
+	\includegraphics[width=8cm]{km_cancer_time}
+	\caption{KMeans clustering on the cancer sample expression data set}
+\end{figure}
+
+This is due to the fact that, unlike KMeans, neither algorithm requires performing distance calculations for all the points, and comparing these distances, until the searching phase, which is a commonality for all algorithms. Instead, each algorithm only performs a single (in reality it is one calculation for each dimension) calculation for each cluster, and compares across that calculation as opposed to the calculations needed for each point in KMeans.  
+
+\begin{figure}[h]
+	\includegraphics[width=8cm]{lsh_world_time}
+	\caption{LSH clustering on the world cities data set}
+\end{figure}
+
+The main calculation needed in KD-Tree is to compute the variance for each dimension in each cluster so that  it can split the cluster along the correct dimension. For LSH, the computation comes from computing the dot product with each data point and the vectors used for the hashing. \par
+
+\begin{figure}[h]
+	\includegraphics[width=8cm]{lsh_eth_time}
+	\caption{LSH clustering on the ethylene gas mixture data set}
+\end{figure}
+\begin{figure}[h]
+	\includegraphics[width=8cm]{lsh_cancer_time}
+	\caption{LSH clustering on the cancer sample expression data set}
+\end{figure}
+
+In most cases, KD-Tree had faster search times, while LSH presented drastically better clustering times. This is to be expected, as the characteristics needed to do a search on the clusters for both of the algorithms involves the boundaries of the clusters. KD-Tree keeps track of these values in each phase of its clustering. However, LSH does not typically need that information unless it intends to perform an exact search, so these values must be calculated during the search time for LSH. There needed to be a distinct time for calculating these borders needed for an exact search in LSH. In the other algorithms this time is part of the clustering, however, in LSH it was added to the search time. The reasoning behind this choice is the fact that the other algorithms need to keep track of the boundary values in clustering, so adding them to their appropriate lists or arrays is not time consuming, in fact, it is the exact same time as if it was done after clustering. For LSH, on the other hand, the boundary values are not added until after the clustering is completed because it is not needed for clustering. In fact, unlike the other two algorithms, those cluster boundaries are not even needed for an approximate search of the single closest cluster. It is only needed for the exact search in which other clusters need to be checked. In addition, for KD-Tree and KMeans, another point of time consumption comes from rearranging the data set based on which cluster each data point belongs to. For KD-Tree, rearranging is only performed once at the last step, while KMeans requires rearranging to be done for each iteration. For a simple implementation this take \textit{O(n * dim)} and at best \textit{O(nlog(n))} (this can be achieved in a slightly more complex fashion by using a typical one-dimension list sorting technique such as quicksort). However, the way in which we implemented the clustering for LSH allowed for the data rearrangement to be performed in linear time. Figure SOMETHING+1 shows each algorithms best time for each data set.
+
+\begin{figure}[t]
+	\includegraphics[width=8cm]{best_sep}
+	\caption{Each algorithm's best search time for each data set, along with the corresponding clustering times for each search time}
+\end{figure}
+\begin{figure}[t]
+	\includegraphics[width=8cm]{best_total}
+	\caption{The best total time taken for each algorithm on each data set (not necessarily the fastest search from the previous figure).}
+\end{figure}
 
 \section{Discussion}
 The following section will discuss some contributions that were made as a result of this research, as well as some considerations for the future.
  \subsection{Contributions}
- 
+ The contributions of this research consist of an in depth analysis of the efficiency of the clustering algorithms, as well as the searching techniques after the clustering in performed. In addition, we present a novel way to perform an exact search on LSH clustering, which, to the best of our knowledge, has not been done previously. The analysis has been thoroughly explained in previous sections, and the new searching was also previously explained in the algorithm descriptions. In summary, the same techniques that are used for KD-Tree and KMeans were borrowed, and used in a similar fashion on the LSH clusters. LSH clusters are difficult to work with because the exact shape of the clusters changes with the number of crossing vectors, as well as the actual value of those vectors. For a simple two vectors, the cluster shapes can be arranged anywhere from a rectangle to a narrow parallelogram. The clusters can take on an even greater number of shapes for more vectors. Using the parallelogram to illustrate the difficulties with searching LSH clusters, one can imagine a situation in which a query's closest neighbor is actually several clusters away (if those two points are at respective corners of their clusters). In addition, it is extremely difficult to find the borders of a parallelogram cluster (even more difficult for a different arbitrary shape). For this reason, we must create a set of borders for the cluster, which we do in a rectangular shape (similar to KD-Tree) and a circular shape (similar to KMeans). It is clear that both of the techniques will overlap in many areas with other cluster borders, as the borders themselves do not fit the actual shape of the cluster. They will go past the actual edges of the cluster, and in most cases, cut off part of the cluster. This cutoff is the reason why, when comparing these two artificial borders, we must choose the smaller of the two distances. Using a larger border will encompass more of the data set, and will give a shorter distance to a query point. This is important because if we compare with the distance resulting from the smaller sized border, we may exclude points which would need to be considered. Once we have our discrete borders, we can easily compare distances of outstanding clusters to our closest local point, in the same fashion we did for the previous algorithms. 
  
  \subsection{Future Work}
+There are several areas that this research could be extended which would be useful. The first would be to research whether there is a better algorithm to do an exact search after LSH has been used on the data. The dynamic shaping that takes place in LSH (and possible other similar algorithms) makes it difficult to search for data in exterior clusters. The algorithm presented in this paper is simple and gives the correct solution. However, it adds a lot of time to the searching, and it would be helpful for searching applications to be able to do the searching more efficiently. This is especially important for the LSH algorithm because the clustering done by this algorithm is extremely fast, but it falls behind on an exact search. It should be noted, that while the KD-Tree and KMeans algorithms can also do approximate searches, the time reduction is minimal, compared to the 10-100 magnitude speed-up by performing an approximate search after the LSH algorithm. However, in many applications an exact search is necessary, and it would be helpful for furthering other areas of research if there was a more efficient search for that type of grouping.\par
+
+Another area that this research could be expanded on is applying parallel computing to the algorithms. This was started by the researchers, but time constraints forced us to abandon it. While KD-Tree and the traditional KMeans can be made parallel in a straightforward fashion, LSH would benefit the most. Typical speed-ups would be made with parallel programming for KD-Tree and KMeans, however, LSH has the advantage of being a hashing algorithm. Hashing algorithm excels at efficiency with parallel computing because there are no comparisons that have to be made across data sets. The hashing of one data point does not depend on another data point's hash, which means that communication, a major bottleneck of parallelism, is nullified. Another problem that would take additional research time would be the best way to apply parallel computing to the Bisecting-Kmeans version of the traditional KMeans. For appropriate use of parallel programming, the data should be divided equally between each processor, and the local maximum and minimum distances have to be compared against all processors. However, Bisecting-Kmeans does not work on the whole data set equally, instead working on more compact sets. Unfortunately, it can be difficult and complicated to figure out which processor owns each group of data, and to communicate each action efficiently. For instance, if one particular region of the data set is the only part which is being divided at each iteration, only a specific set of processors are being used, and parallelism would be wasted. It is difficult to use parallel efficiently. This is an additional reason LSH works well with parallel computing, as mentioned, because the only communication between processors would occur during search, which is the same for all algorithms. The introduction of parallel computing to these algorithms is important because their whole basis is working on big data, and with a large enough size of data, not even the most efficient clustering and searching algorithms will be sufficient with a serial implementation. 
+
+\section{Conclusion}
+The work presented in this paper is an important comparison of clustering algorithms for searching in high-dimensional data. Most work in the area revolves around researching a new clustering algorithm. While this is obviously important, the researchers believe that it is also important to take a step back and analyze and compare each algorithm. It can be extremely useful not just for choosing the fastest algorithm for a given situation, but also to investigate the strengths that each one presents. The characteristics can be used to help develop future clustering algorithms in a more efficient way. In addition to the analysis of existing algorithms, we also presented a novel method to perform an exact search on data clustered with the LSH algorithm. We realize the importance of an exact search after comparing the time efficiency of the presented algorithms, because LSH was exceptionally fast in clustering time, but the initial papers describing the algorithm did not mention a way to translate the approximate search into an exact search. Without this, no definite comparison can be made between the algorithms, because even if the clustering is excellent, it would be practically useless in an application that required an exact search. No other method for this task had been done to our knowledge.
 
 
+
+% use section* for acknowledgment
+\section*{Acknowledgment}
+The authors would like to thank the following websites and organizations for use of their data.
+\begin{itemize}
+	\item Maxmind - Free World Cities Database
+	\item UC Irvine Machine Learning Repository - Dynamic Gas Mixtures Data Set
+	\item National Cancer Institute - Genomic Data Sets: TCGA Samples
+\end{itemize}
+In addition, a special thanks to Judith Cohn at Los Alamos National Laboratory for her work in cleaning the data acquired from the National Cancer Institute. Also, a special thanks to Frank Ibem for allowing the use of his script, which was used to visualize the clustered data in figures 1-3.
+
+% Can use something like this to put references on a page
+% by themselves when using endfloat and the captionsoff option.
+%\ifCLASSOPTIONcaptionsoff
+  %\newpage
+%\fi
+
+%\bibitem{IEEEhowto:kopka}
+%H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
+  %0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
+
+\begin{thebibliography}{1}
+
+  
+\bibitem{lsh-1}
+Mayur Datar, Nicole Immorlica, Piort Indyk, Vahab S. Mirrokni, \emph{Locality-Sensitive Hashing Scheme Based on p-Stable Distributions}, Proceedings of the twentieth annual symposium on Computational geometry, June 08-11, 2004, Brooklyn, New York, USA
+
+\bibitem{lsh-2}
+Lo\"{i}c Paulev\'{e}, H\'{e}rve J\'{e}gou, Laurent Amsaleg, \emph{Locality sensitive hashing: a comparison of hash function types and querying mechanisms}, Pattern Recognition Letters 31, 11 (2010) 1348-1358
+
+\bibitem{lsh-3}
+Yan Ke , Rahul Sukthankar , Larry Huston, \emph{An efficient parts-based near-duplicate and sub-image retrieval system}, Proceedings of the 12th annual ACM international conference on Multimedia, October 10-16, 2004, New York, NY, USA 
+
+\end{thebibliography}
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
 % For figures, \caption should occur after the \includegraphics.
@@ -610,8 +755,7 @@ The following section will discuss some contributions that were made as a result
 
 
 
-\section{Conclusion}
-The conclusion goes here.
+
 
 
 
@@ -632,28 +776,6 @@ The conclusion goes here.
 %
 
 
-\appendices
-\section{Proof of the First Zonklar Equation}
-Appendix one text goes here.
-
-% you can choose not to have a title for an appendix
-% if you want by leaving the argument blank
-\section{}
-Appendix two text goes here.
-
-
-% use section* for acknowledgment
-\section*{Acknowledgment}
-
-
-The authors would like to thank...
-
-
-% Can use something like this to put references on a page
-% by themselves when using endfloat and the captionsoff option.
-\ifCLASSOPTIONcaptionsoff
-  \newpage
-\fi
 
 
 
@@ -679,13 +801,7 @@ The authors would like to thank...
 % <OR> manually copy in the resultant .bbl file
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
-\begin{thebibliography}{1}
 
-\bibitem{IEEEhowto:kopka}
-H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
-  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
-
-\end{thebibliography}
 
 % biography section
 % 
@@ -698,22 +814,12 @@ H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
 %\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{mshell}}]{Michael Shell}
 % or if you just want to reserve a space for a photo:
 
-\begin{IEEEbiography}{Michael Shell}
-Biography text here.
-\end{IEEEbiography}
 
 % if you will not have a photo at all:
-\begin{IEEEbiographynophoto}{John Doe}
-Biography text here.
-\end{IEEEbiographynophoto}
 
 % insert where needed to balance the two columns on the last page with
 % biographies
 %\newpage
-
-\begin{IEEEbiographynophoto}{Jane Doe}
-Biography text here.
-\end{IEEEbiographynophoto}
 
 % You can push biographies down or up by placing
 % a \vfill before or after them. The appropriate

@@ -113,7 +113,7 @@ int local_search(int dim, int ndata, int q0, double *data, int *cluster_size, in
         for (i = 0; i < running_cnt; i++) {
             dist2bound = pnt2bdry(dim, cluster_bdry, query, q, i);
             dist2rad = pnt2centDistance(dim, i, q, query, cluster_centroid) - cluster_radius[i];
-            clust_dist_arr[i] = MAX(dist2bound, dist2rad);
+            clust_dist_arr[i] = MIN(dist2bound, dist2rad);
         }
         for (i = 0; i < running_cnt; i++) {
             if (i == min_clust_idx) {}//already checked this cluster
